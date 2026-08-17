@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard Radioenlaces</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#171e26; --panel2:#1e2732; --linea:#2a3542;
+    --txt:#e6edf3; --txt2:#8b98a5; --txt3:#5d6b7a;
+    --ok:#2ecc71; --aviso:#f2b100; --critico:#ff5d5d; --caido:#7a8592;
+    --acento:#4aa8ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:14px}
+  header{display:flex;align-items:baseline;gap:16px;padding:16px 24px;
+         border-bottom:1px solid var(--linea);background:var(--panel)}
+  header h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.3px}
+  header .sub{color:var(--txt2);font-size:12px}
+  header .actualizado{margin-left:auto;color:var(--txt3);font-size:12px}
+  main{padding:20px 24px;display:flex;flex-direction:column;gap:20px;max-width:1600px}
+
+  .tarjeta{background:var(--panel);border:1px solid var(--linea);border-radius:10px;overflow:hidden}
+  .tarjeta > .cab{display:flex;align-items:center;gap:14px;padding:14px 18px;
+                  border-bottom:1px solid var(--linea);background:var(--panel2)}
+  .cab .nombre{font-size:16px;font-weight:600}
+  .cab .ruta{color:var(--txt2);font-size:12px;margin-top:3px}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;
+         font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
+  .punto{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .b-ok{background:rgba(46,204,113,.15);color:var(--ok)}          .b-ok .punto{background:var(--ok)}
+  .b-aviso{background:rgba(242,177,0,.15);color:var(--aviso)}     .b-aviso .punto{background:var(--aviso)}
+  .b-critico{background:rgba(255,93,93,.15);color:var(--critico)} .b-critico .punto{background:var(--critico)}
+  .b-caido{background:rgba(122,133,146,.18);color:var(--caido)}   .b-caido .punto{background:var(--caido)}
+
+  .avisos{padding:10px 18px;background:rgba(242,177,0,.08);border-bottom:1px solid var(--linea);
+          color:var(--aviso);font-size:12.5px}
+  .avisos.err{background:rgba(255,93,93,.08);color:var(--critico)}
+
+  .destacados{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));
+              border-bottom:1px solid var(--linea)}
+  .kpi{padding:15px 18px;border-right:1px solid var(--linea)}
+  .kpi:last-child{border-right:none}
+  .kpi .et{color:var(--txt2);font-size:11px;text-transform:uppercase;letter-spacing:.7px}
+  .kpi .val{font-size:25px;font-weight:600;margin-top:6px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .kpi .val small{font-size:13px;color:var(--txt2);font-weight:400;margin-left:3px}
+  .kpi .val.chico{font-size:19px}
+  .kpi .nota{color:var(--txt3);font-size:11.5px;margin-top:4px}
+
+  .cuerpo{display:grid;grid-template-columns:1.05fr 1fr}
+  @media(max-width:1100px){.cuerpo{grid-template-columns:1fr}}
+  .bloque{padding:16px 18px;border-right:1px solid var(--linea)}
+  .bloque:last-child{border-right:none}
+  .bloque h3{margin:0 0 11px;font-size:11px;color:var(--txt2);text-transform:uppercase;
+             letter-spacing:.8px;font-weight:600}
+  .bloque h3 span{text-transform:none;letter-spacing:0;color:var(--txt3);font-weight:400}
+
+  .cadena{display:grid;grid-template-columns:58px 1fr 74px;align-items:center;gap:10px;margin-bottom:7px}
+  .cadena .cn{color:var(--txt2);font-size:12px}
+  .cadena .barra{height:7px;background:var(--panel2);border-radius:4px;overflow:hidden}
+  .cadena .relleno{height:100%;border-radius:4px;transition:width .4s}
+  .cadena .num{text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px}
+  .cadena .num i{color:var(--txt3);font-style:normal}
+
+  table.datos{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.datos td{padding:5px 0;border-bottom:1px solid rgba(42,53,66,.55);vertical-align:top}
+  table.datos td:first-child{color:var(--txt2);width:40%}
+  table.datos th{padding:0 0 6px;text-align:left;color:var(--txt3);font-weight:600;font-size:11px;
+                 text-transform:uppercase;letter-spacing:.6px}
+  table.datos tr:last-child td{border-bottom:none}
+
+  .graf{padding:16px 18px;border-top:1px solid var(--linea)}
+  .graf .cabg{display:flex;align-items:center;gap:14px;margin-bottom:10px;flex-wrap:wrap}
+  .graf h3{margin:0;font-size:11px;color:var(--txt2);text-transform:uppercase;letter-spacing:.8px}
+  .rangos{margin-left:auto;display:flex;gap:4px}
+  .rangos button{background:var(--panel2);color:var(--txt2);border:1px solid var(--linea);
+                 border-radius:5px;padding:3px 10px;font-size:11.5px;cursor:pointer}
+  .rangos button.on{background:var(--acento);color:#04121f;border-color:var(--acento);font-weight:600}
+  .leyenda{display:flex;gap:14px;font-size:11.5px;color:var(--txt2)}
+  .leyenda i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+  canvas{width:100%;height:190px;display:block}
+
+  .vacio{padding:40px;text-align:center;color:var(--txt3)}
+  footer{padding:12px 24px;color:var(--txt3);font-size:11.5px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Radioenlaces</h1>
+  <span class="sub">monitorizacion de senal y calidad RF</span>
+  <span class="actualizado" id="actualizado">conectando...</span>
+</header>
+
+<main id="contenedor">
+  <div class="vacio">Cargando datos de los radios...</div>
+</main>
+
+<footer>Refresco automatico. Historico almacenado en el propio servidor.</footer>
+
+<script>
+const RANGOS = [{et:'1 h',h:1},{et:'6 h',h:6},{et:'24 h',h:24},{et:'7 d',h:168}];
+const estadoUI = {};
+let intervaloRefresco = 15000;
+
+// ---------- utilidades -------------------------------------------------
+const n = (v,d=1) => (v===null||v===undefined||isNaN(v)) ? '--' : Number(v).toFixed(d);
+const esc = s => String(s??'').replace(/[<>&"']/g,
+  c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
+const num = v => (v===null||v===undefined) ? '--' : v;
+
+function uptimeTexto(seg){
+  if(seg===null||seg===undefined||isNaN(seg)) return '--';
+  seg = Math.floor(seg);
+  const d = Math.floor(seg/86400), h = Math.floor(seg%86400/3600), m = Math.floor(seg%3600/60);
+  return d>0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m`;
+}
+
+// RSSI por cadena (dBm): verde >= -55, amarillo hasta -75, rojo por debajo
+function colorRssi(v){
+  if(v===null||v===undefined) return 'var(--txt3)';
+  if(v >= -55) return 'var(--ok)';
+  if(v >= -65) return '#9ccc3a';
+  if(v >= -75) return 'var(--aviso)';
+  return 'var(--critico)';
+}
+// EVM: cuanto mas negativo, mejor
+function colorEvm(v){
+  if(v===null||v===undefined) return 'var(--txt3)';
+  if(v <= -28) return 'var(--ok)';
+  if(v <= -24) return '#9ccc3a';
+  if(v <= -20) return 'var(--aviso)';
+  return 'var(--critico)';
+}
+const pctRssi = v => (v===null||v===undefined) ? 0 : Math.max(0,Math.min(100,(v+90)/60*100));
+const pctEvm  = v => (v===null||v===undefined) ? 0 : Math.max(0,Math.min(100,(-10-v)/25*100));
+
+// ---------- render -----------------------------------------------------
+function barras(titulo, sub, valores, colorFn, pctFn, unidad){
+  if(!valores || !valores.length || valores.every(v=>v===null||v===undefined)) return '';
+  let html = `<h3>${titulo}${sub?` <span>${sub}</span>`:''}</h3>`;
+  valores.forEach((v,i)=>{
+    const c = colorFn(v);
+    html += `<div class="cadena">
+      <span class="cn">Cadena ${i}</span>
+      <span class="barra"><span class="relleno" style="width:${pctFn(v)}%;background:${c}"></span></span>
+      <span class="num" style="color:${c}">${n(v)} <i>${unidad}</i></span>
+    </div>`;
+  });
+  return html;
+}
+
+function tarjetaRadio(r){
+  const nivel = r.nivel || 'caido';
+  const etiquetas = {ok:'Operativo', aviso:'Degradado', critico:'Critico', caido:'Sin enlace'};
+  const loc = r.local||{}, rem = r.remoto||{}, rf = r.remoto_rf||{}, gps = r.gps||{};
+  const rangoActual = estadoUI[r.nombre]?.rango ?? 6;
+
+  let avisos = '';
+  if(r.error){
+    avisos = `<div class="avisos err">No se pudo leer el radio: ${esc(r.error)}</div>`;
+  } else if(r.avisos && r.avisos.length){
+    avisos = `<div class="avisos">${r.avisos.map(esc).join(' &middot; ')}</div>`;
+  }
+
+  return `
+  <section class="tarjeta" data-radio="${esc(r.nombre)}">
+    <div class="cab">
+      <div>
+        <div class="nombre">${esc(r.enlace || r.nombre)}${r.enlace_equipo?` <span style="color:var(--txt3);font-weight:400;font-size:12px">(${esc(r.enlace_equipo)})</span>`:''}</div>
+        <div class="ruta">${esc(loc.nombre||'?')} &middot; ${esc(loc.ip||r.host)} &nbsp;&harr;&nbsp;
+          ${esc(rem.nombre||'?')} &middot; ${esc(rem.ip||'?')}
+          &nbsp;|&nbsp; ${esc(loc.modelo||'')} ${r.banda?esc(r.banda)+' GHz':''} &middot; ${esc(r.ancho_canal||'')}
+          &middot; ${num(r.freq1)}/${num(r.freq2)} MHz &middot; ${n(r.distancia_m,0)} m</div>
+      </div>
+      <span class="badge b-${nivel}" style="margin-left:auto"><span class="punto"></span>${etiquetas[nivel]}</span>
+    </div>
+    ${avisos}
+
+    <div class="destacados">
+      <div class="kpi">
+        <div class="et">RSSI por cadena</div>
+        <div class="val" style="color:${colorRssi(r.rssi_cadena_media)}">${n(r.rssi_cadena_media)}<small>dBm</small></div>
+        <div class="nota">combinado ${n(r.rssi_combinado)} dBm</div>
+      </div>
+      <div class="kpi">
+        <div class="et">SNR</div>
+        <div class="val">${n(r.snr)}<small>dB</small></div>
+        <div class="nota">ruido ${n(r.ruido_medio)} dBm</div>
+      </div>
+      <div class="kpi">
+        <div class="et">EVM medio</div>
+        <div class="val" style="color:${colorEvm(r.evm_medio)}">${n(r.evm_medio)}<small>dB</small></div>
+        <div class="nota">peor cadena ${n(r.evm_peor)} dB</div>
+      </div>
+      <div class="kpi">
+        <div class="et">Modulacion</div>
+        <div class="val chico">MCS ${num(r.tx_mcs)} / ${num(r.rx_mcs)}</div>
+        <div class="nota">${num(r.tx_streams)}x${num(r.rx_streams)} streams</div>
+      </div>
+      <div class="kpi">
+        <div class="et">PHY Tx / Rx</div>
+        <div class="val chico">${n(r.tx_phy_mbps,0)} / ${n(r.rx_phy_mbps,0)}<small>Mbps</small></div>
+        <div class="nota">PER ${n(r.per_link)} %</div>
+      </div>
+      <div class="kpi">
+        <div class="et">Disponibilidad</div>
+        <div class="val chico">${n(r.disponibilidad,3)}<small>%</small></div>
+        <div class="nota">uptime ${uptimeTexto(r.uptime_s)}</div>
+      </div>
+    </div>
+
+    <div class="cuerpo">
+      <div class="bloque">
+        ${barras('Senal recibida aqui', `en ${esc(loc.nombre||'local')}`, r.rssi_cadenas, colorRssi, pctRssi, 'dBm')}
+        <div style="height:12px"></div>
+        ${barras('Calidad de modulacion (EVM)','', r.evm_cadenas, colorEvm, pctEvm, 'dB')}
+        <div style="height:12px"></div>
+        ${barras('Senal recibida en el otro extremo', `en ${esc(rem.nombre||'remoto')}`, rf.rssi_cadenas, colorRssi, pctRssi, 'dBm')}
+      </div>
+      <div class="bloque">
+        <h3>Equipos</h3>
+        <table class="datos">
+          <tr><th></th><th>Local</th><th>Remoto</th></tr>
+          <tr><td>Equipo</td><td>${esc(loc.nombre||'--')}</td><td>${esc(rem.nombre||'--')}</td></tr>
+          <tr><td>Modo</td><td>${esc(loc.modo||'--')}</td><td>${esc(rem.modo||'--')}</td></tr>
+          <tr><td>Temperatura</td><td>${n(loc.temperatura)} &deg;C</td><td>${n(rem.temperatura)} &deg;C</td></tr>
+          <tr><td>Ethernet</td><td>${esc(loc.ethernet||'--')}</td><td>${esc(rem.ethernet||'--')}</td></tr>
+          <tr><td>Interfaz activa</td><td>${esc(loc.interfaz_activa||'--')}</td><td>${esc(rem.interfaz_activa||'--')}</td></tr>
+          <tr><td>Firmware</td><td>${esc(loc.firmware||'--')}</td><td>${esc(rem.firmware||'--')}</td></tr>
+          <tr><td>Ultimo reinicio</td><td>${esc(String(loc.ultimo_reboot||'--').split(' (')[0])}</td>
+              <td>${esc(String(rem.ultimo_reboot||'--').split(' (')[0])}</td></tr>
+        </table>
+        <div style="height:14px"></div>
+        <h3>Radio</h3>
+        <table class="datos">
+          <tr><td>Potencia Tx</td><td colspan="2">${n(r.tx_power)} dBm &nbsp;&middot;&nbsp; remoto ${n(rf.tx_power,0)} dBm ${rf.tpc_backoff!=null?`(backoff ${n(rf.tpc_backoff,0)} dB)`:''}</td></tr>
+          <tr><td>Ruido cadenas 1-2 / 3-4</td><td colspan="2">${n(r.ruido1)} / ${n(r.ruido2)} dBm</td></tr>
+          <tr><td>EVM extremo remoto</td><td colspan="2" style="color:${colorEvm(rf.evm)}">${n(rf.evm)} dB &nbsp;&middot;&nbsp; <span style="color:var(--txt2)">RSSI ${n(rf.rssi_medio)} dBm &middot; PER ${n(rf.per,2)} %</span></td></tr>
+          <tr><td>Reintentos / fallos Tx</td><td colspan="2">${num(r.reintentos_tx)} / ${num(r.fallos_tx)} &nbsp;&middot;&nbsp; CRC ${num(r.crc_errores)}</td></tr>
+          <tr><td>GPS (sincronismo TDMA)</td><td colspan="2">${num(gps.satelites)} satelites &nbsp;&middot;&nbsp; SNR ${n(gps.snr)} &nbsp;&middot;&nbsp; precision ${n(gps.precision,2)}</td></tr>
+          <tr><td>Rumbo</td><td colspan="2">${n(r.rumbo,0)}&deg;</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="graf">
+      <div class="cabg">
+        <h3>Historico</h3>
+        <div class="leyenda">
+          <span><i style="background:#4aa8ff"></i>RSSI por cadena (dBm)</span>
+          <span><i style="background:#2ecc71"></i>SNR (dB)</span>
+        </div>
+        <div class="rangos">
+          ${RANGOS.map(x=>`<button data-h="${x.h}" class="${x.h===rangoActual?'on':''}">${x.et}</button>`).join('')}
+        </div>
+      </div>
+      <canvas></canvas>
+    </div>
+  </section>`;
+}
+
+// ---------- grafica (canvas, sin librerias externas) -------------------
+function dibujar(canvas, datos){
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if(!w) return;
+  canvas.width = w*dpr; canvas.height = h*dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+
+  const izq=46, der=46, arr=12, aba=22;
+  const gw = w-izq-der, gh = h-arr-aba;
+
+  const validos = a => a.filter(x=>x!==null&&x!==undefined&&!isNaN(x));
+  if(!datos || datos.length < 2 || !validos(datos.map(d=>d.rssi)).length){
+    ctx.fillStyle='#5d6b7a'; ctx.font='12px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('Aun no hay historico suficiente para este rango', w/2, h/2);
+    return;
+  }
+
+  const serieR = datos.map(d=>d.rssi), serieS = datos.map(d=>d.snr);
+  const rr = validos(serieR), ss = validos(serieS);
+  const minR = Math.min(...rr)-3, maxR = Math.max(...rr)+3;
+  const minS = ss.length ? Math.min(...ss)-3 : 0, maxS = ss.length ? Math.max(...ss)+3 : 1;
+
+  const x  = i => izq + (i/(datos.length-1))*gw;
+  const yR = v => arr + gh - ((v-minR)/((maxR-minR)||1))*gh;
+  const yS = v => arr + gh - ((v-minS)/((maxS-minS)||1))*gh;
+
+  ctx.strokeStyle='#2a3542'; ctx.lineWidth=1; ctx.font='10px sans-serif';
+  for(let k=0;k<=4;k++){
+    const y = arr + gh*k/4;
+    ctx.beginPath(); ctx.moveTo(izq,y); ctx.lineTo(izq+gw,y); ctx.stroke();
+    ctx.fillStyle='#4aa8ff'; ctx.textAlign='right';
+    ctx.fillText((maxR-(maxR-minR)*k/4).toFixed(0), izq-6, y+3);
+    if(ss.length){
+      ctx.fillStyle='#2ecc71'; ctx.textAlign='left';
+      ctx.fillText((maxS-(maxS-minS)*k/4).toFixed(0), izq+gw+6, y+3);
+    }
+  }
+
+  // tramos sin enlace
+  datos.forEach((d,i)=>{
+    if(d.conectado===0){
+      ctx.fillStyle='rgba(255,93,93,.16)';
+      ctx.fillRect(x(i)-1.5, arr, 3, gh);
+    }
+  });
+
+  const linea = (serie,yFn,color)=>{
+    ctx.strokeStyle=color; ctx.lineWidth=1.6; ctx.beginPath();
+    let dibujando=false;
+    serie.forEach((v,i)=>{
+      if(v===null||v===undefined||isNaN(v)){ dibujando=false; return; }
+      if(!dibujando){ ctx.moveTo(x(i),yFn(v)); dibujando=true; }
+      else ctx.lineTo(x(i),yFn(v));
+    });
+    ctx.stroke();
+  };
+  if(ss.length) linea(serieS, yS, '#2ecc71');
+  linea(serieR, yR, '#4aa8ff');
+
+  ctx.fillStyle='#5d6b7a'; ctx.font='10px sans-serif';
+  [0, Math.floor(datos.length/2), datos.length-1].forEach((i,k)=>{
+    const t = new Date(datos[i].ts*1000);
+    ctx.textAlign = k===0?'left':(k===2?'right':'center');
+    ctx.fillText(t.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}), x(i), h-6);
+  });
+}
+
+async function cargarHistorico(seccion, radio, horas){
+  const canvas = seccion.querySelector('canvas');
+  try{
+    const r = await fetch(`/api/historico?radio=${encodeURIComponent(radio)}&horas=${horas}`);
+    const j = await r.json();
+    dibujar(canvas, j.datos || []);
+  }catch(e){ dibujar(canvas, []); }
+}
+
+// ---------- ciclo principal -------------------------------------------
+async function refrescar(){
+  try{
+    const r = await fetch('/api/estado');
+    const j = await r.json();
+    intervaloRefresco = (j.intervalo || 15) * 1000;
+    document.getElementById('actualizado').textContent =
+      'actualizado ' + new Date().toLocaleTimeString('es-ES');
+
+    const cont = document.getElementById('contenedor');
+    if(!j.radios || !j.radios.length){
+      cont.innerHTML = '<div class="vacio">Esperando la primera lectura de los radios...</div>';
+    } else {
+      cont.innerHTML = j.radios.map(tarjetaRadio).join('');
+      cont.querySelectorAll('section.tarjeta').forEach(sec=>{
+        const radio = sec.dataset.radio;
+        estadoUI[radio] = estadoUI[radio] || {rango:6};
+        cargarHistorico(sec, radio, estadoUI[radio].rango);
+        sec.querySelectorAll('.rangos button').forEach(b=>{
+          b.onclick = ()=>{
+            estadoUI[radio].rango = Number(b.dataset.h);
+            sec.querySelectorAll('.rangos button').forEach(x=>x.classList.remove('on'));
+            b.classList.add('on');
+            cargarHistorico(sec, radio, estadoUI[radio].rango);
+          };
+        });
+      });
+    }
+  }catch(e){
+    document.getElementById('actualizado').textContent = 'sin conexion con el proxy';
+  }
+  setTimeout(refrescar, intervaloRefresco);
+}
+
+let temporizadorResize;
+window.addEventListener('resize', ()=>{
+  clearTimeout(temporizadorResize);
+  temporizadorResize = setTimeout(()=>{
+    document.querySelectorAll('section.tarjeta').forEach(sec=>{
+      cargarHistorico(sec, sec.dataset.radio, estadoUI[sec.dataset.radio]?.rango ?? 6);
+    });
+  }, 200);
+});
+
+refrescar();
+</script>
+</body>
+</html>

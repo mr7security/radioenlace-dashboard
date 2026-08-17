@@ -1,0 +1,29 @@
+[Unit]
+Description=Dashboard de Radioenlaces (Mimosa)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dashboard-radio
+Group=dashboard-radio
+WorkingDirectory=/opt/dashboard-radioenlaces
+ExecStart=/usr/bin/python3 /opt/dashboard-radioenlaces/proxy.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dashboard-radioenlaces
+
+# Endurecimiento basico: el servicio solo necesita leer su carpeta y salir a la red
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+ReadWritePaths=/opt/dashboard-radioenlaces
+
+[Install]
+WantedBy=multi-user.target

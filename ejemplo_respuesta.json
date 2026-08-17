@@ -1,0 +1,96 @@
+{
+  "_comentario": "Muestra real capturada de https://172.16.177.4/cgi/dashboard.php el 2026-08-17. Se ha eliminado a proposito el bloque 'config' del original porque contiene credenciales (passphrase WPA, hash de admin, community SNMP). Sirve para probar el parser sin tocar el radio: python3 proxy.py --fixture ejemplo_respuesta.json",
+  "realtime": {
+    "signalmeter": {
+      "BandWidth": "2x40",
+      "Ext_lo_freq": "18960",
+      "OperatingBand": "24",
+      "Chains_1_2": "24170 MHz",
+      "Chains_3_4": "24090 MHz",
+      "ChannelPower": "4",
+      "ChannelPower2": "4",
+      "get_phy": "rxpackets=326&rxbytes=39327&rxgain=27&cnt_mac_crc=0&noise=-87.466736&txpackets=329&txbytes=50822&txdefers=0&txtimeouts=&txretries=4&txfail=0&rx_sp_fail=0&rx_lp_fail=0&tx_mcs=6&tx_streams=4&rx_mcs=9&rx_streams=4&evm_0=-27.7&evm_1=-28.2&evm_2=-27.0&evm_3=-27.6&evm_total=-110.6&tx_phy_rate=540&rx_phy_rate=800&rssi_0=-49.4&rssi_1=-49.5&rssi_2=-49.5&rssi_3=-49.2&rssi_average=-43.4&per_link=0&per_phy=1&rx_bw=0&tx_bw=0",
+      "noise": "-90.467",
+      "noise2": "-90.776",
+      "totalPower": "4.01",
+      "tx_power": "4.01",
+      "TotalPowerPeer": "7"
+    },
+    "connection": {
+      "availability": "99.9987",
+      "TTD": "",
+      "ConnectingUptime": "7.70758e+06",
+      "connected": "1",
+      "privacy": "*WPA-PSK/AES CCMP 128*",
+      "linkName": "AzulSimba",
+      "heading": "320.251",
+      "distance": "689.154"
+    },
+    "gps": {
+      "Elevation": "58.400000",
+      "SNR": "42.3",
+      "Latitude": "39.7919",
+      "Accuracy": "90.5794",
+      "Precision": "1.56",
+      "Longitude": "-0.1759",
+      "Satellites": "5,44:6,37:7,44:9,44:11,38:14,38:20,38:21,41:22,38:30,47"
+    },
+    "throughput": {
+      "throughput": "1786973840:16769.187356,13715.999028;1786973845:15042.633593,7623.947933;1786973850:13279.651235,8579.871510"
+    },
+    "device_info": {
+      "IPSource": "Static",
+      "IPAddress": "172.16.177.4",
+      "Netmask": "255.255.255.0",
+      "Gateway": "172.16.177.254",
+      "ethernetSpeed": "1000Mb/s Full Duplex",
+      "ETHDownGraded": "0",
+      "Temperature": "54.800000",
+      "Description": "",
+      "Version": "2.5.5.5",
+      "LastReboot": "2026-04-11 10:06:02 (UTC +0000)",
+      "InstallDate": "2023-02-06",
+      "SerialNumber": "1138297578",
+      "Model": "B24",
+      "WirelessMode": "TDMA",
+      "DeviceMode": "Station",
+      "DeviceName": "STNSimba",
+      "rebootReason": "Non-Responsive System",
+      "TDMAMode": "A",
+      "TrafficBalance": "50",
+      "fiberSpeed": "Off",
+      "networkInterface": "Ethernet (RJ45)",
+      "activeNetworkInterface": "Failover Ethernet (RJ45)"
+    },
+    "remote_info": {
+      "IPAddress": "172.16.177.3",
+      "Model": "B24",
+      "DeviceName": "SimbaSTN",
+      "SerialNumber": "1137086987",
+      "Version": "2.5.5.5",
+      "IPSource": "Static",
+      "LastReboot": "2026-05-20 08:38:31 (UTC +0000)",
+      "WirelessMode": "TDMA",
+      "InstallDate": "2023-02-06",
+      "DeviceMode": "Access Point",
+      "friendlyname": "Enlace_Simba-STN",
+      "Temperature": "55.100000",
+      "TDMAMode": "A",
+      "Remote_PER": "0.000",
+      "chan_info": "24090_24170_240_004_004_-048_-049_-049_-048_-022",
+      "tpc_backoff": "5",
+      "networkInterface": "Ethernet (RJ45)",
+      "activeNetworkInterface": "Failover Ethernet (RJ45)",
+      "ethernetSpeed": "1000Mb/s Full Duplex"
+    },
+    "mimo": {
+      "Chains": "4",
+      "tx_powerperchain0": "-2",
+      "tx_powerperchain1": "-2",
+      "tx_powerperchain2": "-2",
+      "tx_powerperchain3": "-2",
+      "tx_powerperchain4": "7"
+    },
+    "DateTime": { "Date": "2026-08-17", "Time": "13:38:25" }
+  }
+}

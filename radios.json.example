@@ -1,0 +1,25 @@
+{
+  "puerto": 8080,
+  "intervalo_segundos": 15,
+  "dias_historico": 30,
+  "radios": [
+    {
+      "nombre": "SEDE - AZULMED",
+      "host": "172.16.177.4",
+      "usuario": "",
+      "password": ""
+    },
+    {
+      "nombre": "CENUSA - VENUX",
+      "host": "172.16.172.4",
+      "usuario": "",
+      "password": ""
+    },
+    {
+      "nombre": "SEDE - VENUX",
+      "host": "172.16.178.3",
+      "usuario": "",
+      "password": ""
+    }
+  ]
+}
