@@ -1,6 +1,6 @@
 {
   "puerto": 8080,
-  "intervalo_segundos": 15,
+  "intervalo_segundos": 10,
   "dias_historico": 30,
   "_ayuda": "tipo: 'mimosa' (login web, usuario+password) o 'ceragon' (SNMP v2c, community). Renombra este archivo a radios.json; NO se sube al repositorio.",
   "radios": [
