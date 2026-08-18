@@ -245,6 +245,21 @@ def contar_satelites(texto):
     return len([p for p in texto.split(":") if p]) if texto else None
 
 
+def normalizar_distancia(valor):
+    """Devuelve la distancia en metros.
+
+    Los B24 la reportan en metros (p.ej. 689), pero otros modelos como el B01
+    la dan en milimetros (p.ej. 2.90564e6 = 2905 m). Ningun radioenlace real
+    supera los 100 km, asi que un valor mayor solo puede venir en mm.
+    """
+    d = _f(valor)
+    if d is None:
+        return None
+    if d > 100000:  # > 100 km: imposible, viene en mm
+        return round(d / 1000.0, 1)
+    return round(d, 1)
+
+
 # ---------------------------------------------------------------------------
 # Normalizacion
 # ---------------------------------------------------------------------------
@@ -299,7 +314,7 @@ def parsear_radio(nombre, host, crudo):
         "enlace_equipo": rem.get("friendlyname") or con.get("linkName") or "",
         "disponibilidad": _f(con.get("availability")),
         "uptime_s": _f(con.get("ConnectingUptime")),
-        "distancia_m": _f(con.get("distance")),
+        "distancia_m": normalizar_distancia(con.get("distance")),
         "rumbo": _f(con.get("heading")),
         # --- senal / calidad RF (extremo local) ---------------------------
         "rssi_combinado": rssi_combinado,
