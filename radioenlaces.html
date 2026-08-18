@@ -73,6 +73,19 @@
   body.tv .pm4{font-size:clamp(.55rem,.72vw,1.05rem); max-width:none}
   body.tv .pm4 .cell{font-size:clamp(.6rem,.85vw,1.25rem)}
   body.tv .pm4 .cap{font-size:clamp(.5rem,.7vw,1rem)}
+  /* dos valores grandes lado a lado (Cap media / Tput medio) + linea de picos */
+  .dual{display:flex; gap:14px; width:100%; margin-top:2px}
+  .dual .dcell{flex:1; min-width:0; text-align:center}
+  .dual .dcell .t{font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; display:block; margin-bottom:2px}
+  .dual .v2{font-size:1.95rem; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.05; white-space:nowrap}
+  .dual .v2 small{font-size:.46em; color:var(--muted); font-weight:500; margin-left:2px}
+  .picos{font-size:.66rem; color:var(--muted); margin-top:8px; text-align:center; white-space:nowrap}
+  .picos b{color:var(--text); font-variant-numeric:tabular-nums}
+  .picos i{font-style:normal; opacity:.8}
+  body.tv .dual{gap:clamp(10px,1.6vw,32px)}
+  body.tv .dual .dcell .t{font-size:clamp(.55rem,.8vw,1.15rem)}
+  body.tv .dual .v2{font-size:clamp(1.8rem,3.4vw,6rem)}
+  body.tv .picos{font-size:clamp(.6rem,.9vw,1.3rem); margin-top:clamp(4px,1vh,14px)}
   .bar{position:relative; height:6px; background:#0b1120; border-radius:3px; margin:7px 0 3px}
   .bar .fill{position:absolute; top:0; bottom:0; border-radius:3px}
   .bar .dot{position:absolute; top:-3px; width:12px; height:12px; border-radius:50%; border:2px solid var(--bg); transform:translateX(-50%)}
@@ -424,11 +437,17 @@ function render(data){
         // --- Segundo bloque: Ceragon = Capacidad (pico) + rejilla; Mimosa = Calidad EVM ---
         let bloqueQual;
         if(esCeragon){
-          const capPico = (r.pm||{}).cap_pico;
+          const pm = r.pm||{};
+          const rr = v => (v===null||v===undefined)?"--":Math.round(v);
           bloqueQual = `<div class="sensor" data-type="qual">
-              <div class="label">⚡ Capacidad pico</div>
-              <div class="value" style="color:var(--accent)">${capPico!=null?Math.round(capPico):"--"}<small> Mbps</small></div>
-              ${pm4HTML(r.pm)}
+              <div class="label">⚡ Capacidad / Throughput</div>
+              <div class="dual">
+                <div class="dcell"><span class="t">Cap. media</span>
+                  <div class="v2" style="color:var(--accent)">${rr(pm.cap_media)}<small>Mbps</small></div></div>
+                <div class="dcell"><span class="t">Tput medio</span>
+                  <div class="v2">${rr(pm.tp_media)}<small>Mbps</small></div></div>
+              </div>
+              <div class="picos">Cap. pico <b>${rr(pm.cap_pico)}</b> · Tput pico <b>${rr(pm.tp_pico)}</b> <i>Mbps · PM 15 min</i></div>
             </div>`;
         }else{
           const cc = colorCalidad(r.evm_medio);
