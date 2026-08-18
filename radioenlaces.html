@@ -108,17 +108,20 @@
   body.tv .svals, body.tv .charts{display:flex; flex-direction:column}
   body.tv .sensor[data-type="sig"],  body.tv .chartblock[data-type="sig"]{order:1}
   body.tv .sensor[data-type="qual"], body.tv .chartblock[data-type="qual"]{order:2}
-  body.tv .svals{flex:1; gap:6px; align-items:stretch}
-  body.tv .sensor{padding:4px 6px; display:flex; flex-direction:column;
+  body.tv .svals{flex:1 1 0; min-height:0; gap:6px; align-items:stretch}
+  body.tv .sensor{padding:4px 6px; min-height:0; overflow:hidden; display:flex; flex-direction:column;
                   justify-content:center; align-items:center; text-align:center; min-width:0}
   body.tv .label{font-size:clamp(.6rem, .95vw, 1.25rem)}
-  body.tv .value{font-size:clamp(2.4rem, 4.6vw, 8rem); white-space:nowrap; line-height:1.02; font-weight:800}
+  body.tv .value{font-size:clamp(2rem, 4.2vw, 7rem); white-space:nowrap; line-height:1.02; font-weight:800}
   body.tv .value small{font-size:.4em}
   body.tv .sub{font-size:clamp(.6rem, .9vw, 1.15rem)}
   body.tv .bar{margin:5px 0 0; width:100%}
-  body.tv .charts{min-height:0; margin-top:4px}
-  body.tv .chartblock{margin-bottom:2px}
-  body.tv canvas.chart{height:clamp(22px, 4.5vh, 60px)}
+  /* Historico en TV: una sola grafica (señal), compacta y sin etiqueta, para que no desborde */
+  body.tv .charts{flex:0 0 auto; min-height:0; margin-top:4px}
+  body.tv .chartblock[data-type="qual"]{display:none}
+  body.tv .chartblock .label{display:none}
+  body.tv .chartblock{margin-bottom:0}
+  body.tv canvas.chart{height:clamp(16px, 3vh, 42px)}
   body.tv .detalle{display:none}   /* el detalle completo solo en vista normal */
 
   /* ===== Cartel de SIN CONEXIÓN a pantalla completa (solo modo TV) ===== */
