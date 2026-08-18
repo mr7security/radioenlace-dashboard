@@ -421,13 +421,24 @@ function render(data){
             <div class="rangetxt"><span>-90</span><span>-30 dBm</span></div>` : "";
         const subSenal = cadenas ? `${esCeragon?"portadoras":"cadenas"}: ${cadenas} dBm` : "";
 
-        // --- Calidad ---
-        const cal = r.evm_medio;
-        const cc = colorCalidad(cal);
-        // Ceragon: rejilla 2x2 con throughput/capacidad; Mimosa: linea de modulacion+SNR
-        const calidadExtra = esCeragon
-          ? pm4HTML(r.pm)
-          : `<div class="sub">${esc(`${r.tx_mcs!=null ? `MCS ${r.tx_mcs}/${r.rx_mcs}` : "--"}${r.snr!=null?` · SNR ${n(r.snr)} dB`:""}`)}</div>`;
+        // --- Segundo bloque: Ceragon = Capacidad (pico) + rejilla; Mimosa = Calidad EVM ---
+        let bloqueQual;
+        if(esCeragon){
+          const capPico = (r.pm||{}).cap_pico;
+          bloqueQual = `<div class="sensor" data-type="qual">
+              <div class="label">⚡ Capacidad pico</div>
+              <div class="value" style="color:var(--accent)">${capPico!=null?Math.round(capPico):"--"}<small> Mbps</small></div>
+              ${pm4HTML(r.pm)}
+            </div>`;
+        }else{
+          const cc = colorCalidad(r.evm_medio);
+          const subQ = `${r.tx_mcs!=null ? `MCS ${r.tx_mcs}/${r.rx_mcs}` : "--"}${r.snr!=null?` · SNR ${n(r.snr)} dB`:""}`;
+          bloqueQual = `<div class="sensor" data-type="qual">
+              <div class="label">✦ Calidad EVM</div>
+              <div class="value v-${cc}">${n(r.evm_medio)}<small> dB</small></div>
+              <div class="sub">${esc(subQ)}</div>
+            </div>`;
+        }
 
         inner = `<div class="svals">
             <div class="sensor" data-type="sig">
@@ -436,11 +447,7 @@ function render(data){
               ${barSenal}
               <div class="sub">${subSenal}</div>
             </div>
-            <div class="sensor" data-type="qual">
-              <div class="label">✦ Calidad ${esCeragon?"MSE":"EVM"}</div>
-              <div class="value v-${cc}">${n(cal)}<small> dB</small></div>
-              ${calidadExtra}
-            </div>
+            ${bloqueQual}
           </div>
           ${detalleHTML(r)}
           <div class="charts">
@@ -449,7 +456,7 @@ function render(data){
               <canvas class="chart" data-key="${esc(r.nombre)}|sig" data-color="${color}"></canvas>
             </div>
             <div class="chartblock" data-type="qual">
-              <div class="label">Calidad — histórico</div>
+              <div class="label">${esCeragon?"MSE":"Calidad"} — histórico</div>
               <canvas class="chart" data-key="${esc(r.nombre)}|qual" data-color="${color}"></canvas>
             </div>
           </div>`;
