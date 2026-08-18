@@ -3,23 +3,12 @@
   "intervalo_segundos": 15,
   "dias_historico": 30,
   "radios": [
-    {
-      "nombre": "SEDE - AZULMED",
-      "host": "172.16.177.4",
-      "usuario": "",
-      "password": ""
-    },
-    {
-      "nombre": "CENUSA - VENUX",
-      "host": "172.16.172.4",
-      "usuario": "",
-      "password": ""
-    },
-    {
-      "nombre": "SEDE - VENUX",
-      "host": "172.16.178.3",
-      "usuario": "",
-      "password": ""
-    }
+    { "nombre": "SEDE - AZULMED",     "tipo": "mimosa",  "host": "172.16.177.4",  "usuario": "configure", "password": "HC}4nSv@r.zm" },
+    { "nombre": "CENUSA - VENUX",     "tipo": "mimosa",  "host": "172.16.172.4",  "usuario": "configure", "password": "4?rTs#P!" },
+    { "nombre": "SEDE - TESANY",      "tipo": "mimosa",  "host": "172.16.178.3",  "usuario": "configure", "password": "&U6fBAq8Qw" },
+    { "nombre": "CERAGON STN-VIT",    "tipo": "ceragon", "host": "172.16.166.3",  "community": "public" },
+    { "nombre": "CERAGON STN-TESANY", "tipo": "ceragon", "host": "172.16.170.11", "community": "public" },
+    { "nombre": "CERAGON STN-CL1",    "tipo": "ceragon", "host": "172.16.171.11", "community": "public" },
+    { "nombre": "CERAGON STN-SEDE",   "tipo": "ceragon", "host": "172.16.176.3",  "community": "public" }
   ]
 }
