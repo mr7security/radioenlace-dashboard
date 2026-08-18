@@ -163,62 +163,119 @@ function tarjetaRadio(r){
     avisos = `<div class="avisos">${r.avisos.map(esc).join(' &middot; ')}</div>`;
   }
 
-  return `
-  <section class="tarjeta" data-radio="${esc(r.nombre)}">
-    <div class="cab">
-      <div>
-        <div class="nombre">${esc(r.enlace || r.nombre)}${r.enlace_equipo?` <span style="color:var(--txt3);font-weight:400;font-size:12px">(${esc(r.enlace_equipo)})</span>`:''}</div>
-        <div class="ruta">${esc(loc.nombre||'?')} &middot; ${esc(loc.ip||r.host)} &nbsp;&harr;&nbsp;
-          ${esc(rem.nombre||'?')} &middot; ${esc(rem.ip||'?')}
-          &nbsp;|&nbsp; ${esc(loc.modelo||'')} ${r.banda?esc(r.banda)+' GHz':''} &middot; ${esc(r.ancho_canal||'')}
-          &middot; ${num(r.freq1)}/${num(r.freq2)} MHz &middot; ${n(r.distancia_m,0)} m</div>
-      </div>
-      <span class="badge b-${nivel}" style="margin-left:auto"><span class="punto"></span>${etiquetas[nivel]}</span>
-    </div>
-    ${avisos}
+  const esCeragon = r.tipo === 'ceragon';
+  const unidad = esCeragon ? 'portadora' : 'cadena';
+  const tec = esCeragon ? 'Ceragon (SNMP)' : 'Mimosa';
 
-    <div class="destacados">
+  // Linea de contexto bajo el titulo
+  let meta;
+  if(esCeragon){
+    meta = `${esc(loc.nombre||'?')} &middot; ${esc(loc.ip||r.host)} &nbsp;&harr;&nbsp; remoto ${esc(rem.ip||'?')}
+      &nbsp;|&nbsp; ${esc(loc.modelo||'')} &middot; ${num(r.freq1)}/${num(r.freq2)} MHz &middot; ${tec}`;
+  } else {
+    meta = `${esc(loc.nombre||'?')} &middot; ${esc(loc.ip||r.host)} &nbsp;&harr;&nbsp;
+      ${esc(rem.nombre||'?')} &middot; ${esc(rem.ip||'?')}
+      &nbsp;|&nbsp; ${esc(loc.modelo||'')} ${r.banda?esc(r.banda)+' GHz':''} &middot; ${esc(r.ancho_canal||'')}
+      &middot; ${num(r.freq1)}/${num(r.freq2)} MHz &middot; ${n(r.distancia_m,0)} m`;
+  }
+
+  // --- KPIs (difieren por tecnologia) ---
+  const kpiSenal = `
       <div class="kpi">
-        <div class="et">RSSI por cadena</div>
+        <div class="et">${esCeragon?'RSL por portadora':'RSSI por cadena'}</div>
         <div class="val" style="color:${colorRssi(r.rssi_cadena_media)}">${n(r.rssi_cadena_media)}<small>dBm</small></div>
-        <div class="nota">combinado ${n(r.rssi_combinado)} dBm</div>
-      </div>
+        <div class="nota">${esCeragon?`${(r.rssi_cadenas||[]).length} portadoras`:`combinado ${n(r.rssi_combinado)} dBm`}</div>
+      </div>`;
+
+  const kpiCalidad = `
       <div class="kpi">
-        <div class="et">SNR</div>
-        <div class="val">${n(r.snr)}<small>dB</small></div>
-        <div class="nota">ruido ${n(r.ruido_medio)} dBm</div>
-      </div>
-      <div class="kpi">
-        <div class="et">EVM medio</div>
+        <div class="et">${esCeragon?'MSE medio':'EVM medio'}</div>
         <div class="val" style="color:${colorEvm(r.evm_medio)}">${n(r.evm_medio)}<small>dB</small></div>
-        <div class="nota">peor cadena ${n(r.evm_peor)} dB</div>
-      </div>
+        <div class="nota">peor ${esCeragon?'portadora':'cadena'} ${n(r.evm_peor)} dB</div>
+      </div>`;
+
+  const kpiModulacion = esCeragon ? `
+      <div class="kpi">
+        <div class="et">Modulacion</div>
+        <div class="val chico">${esc(r.modulacion||'--')}</div>
+        <div class="nota">ACM</div>
+      </div>` : `
       <div class="kpi">
         <div class="et">Modulacion</div>
         <div class="val chico">MCS ${num(r.tx_mcs)} / ${num(r.rx_mcs)}</div>
         <div class="nota">${num(r.tx_streams)}x${num(r.rx_streams)} streams</div>
-      </div>
+      </div>`;
+
+  const kpiTercero = esCeragon ? `
+      <div class="kpi">
+        <div class="et">Potencia Tx</div>
+        <div class="val chico">${n(r.tx_power)}<small>dBm</small></div>
+        <div class="nota">temp ${n(loc.temperatura)} &deg;C</div>
+      </div>` : `
+      <div class="kpi">
+        <div class="et">SNR</div>
+        <div class="val">${n(r.snr)}<small>dB</small></div>
+        <div class="nota">ruido ${n(r.ruido_medio)} dBm</div>
+      </div>`;
+
+  const kpiCuarto = esCeragon ? `
+      <div class="kpi">
+        <div class="et">Uptime</div>
+        <div class="val chico">${uptimeTexto(r.uptime_s)}</div>
+        <div class="nota">enlace activo</div>
+      </div>` : `
       <div class="kpi">
         <div class="et">PHY Tx / Rx</div>
         <div class="val chico">${n(r.tx_phy_mbps,0)} / ${n(r.rx_phy_mbps,0)}<small>Mbps</small></div>
         <div class="nota">PER ${n(r.per_link)} %</div>
-      </div>
+      </div>`;
+
+  const kpiDisp = esCeragon ? '' : `
       <div class="kpi">
         <div class="et">Disponibilidad</div>
         <div class="val chico">${n(r.disponibilidad,3)}<small>%</small></div>
         <div class="nota">uptime ${uptimeTexto(r.uptime_s)}</div>
-      </div>
-    </div>
+      </div>`;
 
-    <div class="cuerpo">
-      <div class="bloque">
+  // --- Barras de senal/calidad ---
+  let bloqueBarras;
+  if(esCeragon){
+    bloqueBarras = `
+        ${barras('RSL por portadora', esc(loc.nombre||'local'), r.rssi_cadenas, colorRssi, pctRssi, 'dBm')}
+        <div style="height:12px"></div>
+        ${barras('Calidad de senal (MSE)','', r.evm_cadenas, colorEvm, pctEvm, 'dB')}`;
+  } else {
+    bloqueBarras = `
         ${barras('Senal recibida aqui', `en ${esc(loc.nombre||'local')}`, r.rssi_cadenas, colorRssi, pctRssi, 'dBm')}
         <div style="height:12px"></div>
         ${barras('Calidad de modulacion (EVM)','', r.evm_cadenas, colorEvm, pctEvm, 'dB')}
         <div style="height:12px"></div>
-        ${barras('Senal recibida en el otro extremo', `en ${esc(rem.nombre||'remoto')}`, rf.rssi_cadenas, colorRssi, pctRssi, 'dBm')}
-      </div>
-      <div class="bloque">
+        ${barras('Senal recibida en el otro extremo', `en ${esc(rem.nombre||'remoto')}`, rf.rssi_cadenas, colorRssi, pctRssi, 'dBm')}`;
+  }
+
+  // --- Tabla de detalle ---
+  let bloqueDetalle;
+  if(esCeragon){
+    bloqueDetalle = `
+        <h3>Equipo</h3>
+        <table class="datos">
+          <tr><td>Modelo</td><td>${esc(loc.modelo||'--')}</td></tr>
+          <tr><td>Nº de serie</td><td>${esc(loc.serie||'--')}</td></tr>
+          <tr><td>Temperatura</td><td>${n(loc.temperatura)} &deg;C</td></tr>
+          <tr><td>Descripcion</td><td>${esc(loc.modo||'--')}</td></tr>
+          <tr><td>IP extremo remoto</td><td>${esc(rem.ip||'--')}</td></tr>
+        </table>
+        <div style="height:14px"></div>
+        <h3>Radio</h3>
+        <table class="datos">
+          <tr><td>Modulacion (ACM)</td><td>${esc(r.modulacion||'--')}</td></tr>
+          <tr><td>Potencia Tx</td><td>${n(r.tx_power)} dBm</td></tr>
+          <tr><td>Frecuencia Tx / Rx</td><td>${num(r.freq1)} / ${num(r.freq2)} MHz</td></tr>
+          <tr><td>MSE por portadora</td><td>${(r.evm_cadenas||[]).map(x=>n(x)).join(' / ')||'--'} dB</td></tr>
+          <tr><td>RSL por portadora</td><td>${(r.rssi_cadenas||[]).map(x=>n(x)).join(' / ')||'--'} dBm</td></tr>
+        </table>`;
+  } else {
+    bloqueDetalle = `
         <h3>Equipos</h3>
         <table class="datos">
           <tr><th></th><th>Local</th><th>Remoto</th></tr>
@@ -240,17 +297,37 @@ function tarjetaRadio(r){
           <tr><td>Reintentos / fallos Tx</td><td colspan="2">${num(r.reintentos_tx)} / ${num(r.fallos_tx)} &nbsp;&middot;&nbsp; CRC ${num(r.crc_errores)}</td></tr>
           <tr><td>GPS (sincronismo TDMA)</td><td colspan="2">${num(gps.satelites)} satelites &nbsp;&middot;&nbsp; SNR ${n(gps.snr)} &nbsp;&middot;&nbsp; precision ${n(gps.precision,2)}</td></tr>
           <tr><td>Rumbo</td><td colspan="2">${n(r.rumbo,0)}&deg;</td></tr>
-        </table>
+        </table>`;
+  }
+
+  const leyendaGraf = esCeragon
+    ? `<span><i style="background:#4aa8ff"></i>RSL por portadora (dBm)</span><span><i style="background:#2ecc71"></i>MSE (dB)</span>`
+    : `<span><i style="background:#4aa8ff"></i>RSSI por cadena (dBm)</span><span><i style="background:#2ecc71"></i>SNR (dB)</span>`;
+
+  return `
+  <section class="tarjeta" data-radio="${esc(r.nombre)}">
+    <div class="cab">
+      <div>
+        <div class="nombre">${esc(r.enlace || r.nombre)}${r.enlace_equipo?` <span style="color:var(--txt3);font-weight:400;font-size:12px">(${esc(r.enlace_equipo)})</span>`:''}</div>
+        <div class="ruta">${meta}</div>
       </div>
+      <span class="badge b-${nivel}" style="margin-left:auto"><span class="punto"></span>${etiquetas[nivel]}</span>
+    </div>
+    ${avisos}
+
+    <div class="destacados">
+      ${kpiSenal}${kpiCalidad}${kpiModulacion}${kpiTercero}${kpiCuarto}${kpiDisp}
+    </div>
+
+    <div class="cuerpo">
+      <div class="bloque">${bloqueBarras}</div>
+      <div class="bloque">${bloqueDetalle}</div>
     </div>
 
     <div class="graf">
       <div class="cabg">
         <h3>Historico</h3>
-        <div class="leyenda">
-          <span><i style="background:#4aa8ff"></i>RSSI por cadena (dBm)</span>
-          <span><i style="background:#2ecc71"></i>SNR (dB)</span>
-        </div>
+        <div class="leyenda">${leyendaGraf}</div>
         <div class="rangos">
           ${RANGOS.map(x=>`<button data-h="${x.h}" class="${x.h===rangoActual?'on':''}">${x.et}</button>`).join('')}
         </div>
@@ -280,7 +357,10 @@ function dibujar(canvas, datos){
     return;
   }
 
-  const serieR = datos.map(d=>d.rssi), serieS = datos.map(d=>d.snr);
+  // Segunda serie (verde): SNR en Mimosa; si no hay SNR (Ceragon), usamos MSE
+  const haySnr = validos(datos.map(d=>d.snr)).length > 0;
+  const serieR = datos.map(d=>d.rssi);
+  const serieS = datos.map(d=> haySnr ? d.snr : d.evm);
   const rr = validos(serieR), ss = validos(serieS);
   const minR = Math.min(...rr)-3, maxR = Math.max(...rr)+3;
   const minS = ss.length ? Math.min(...ss)-3 : 0, maxS = ss.length ? Math.max(...ss)+3 : 1;
