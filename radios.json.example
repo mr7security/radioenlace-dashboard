@@ -2,24 +2,25 @@
   "puerto": 8080,
   "intervalo_segundos": 15,
   "dias_historico": 30,
+  "_ayuda": "usuario suele ser 'configure' en los Mimosa. Deja password vacio solo si el radio no exige login. Este archivo (renombrado a radios.json) NO se sube al repositorio.",
   "radios": [
     {
       "nombre": "SEDE - AZULMED",
       "host": "172.16.177.4",
-      "usuario": "",
-      "password": ""
+      "usuario": "configure",
+      "password": "PON_AQUI_LA_CLAVE"
     },
     {
       "nombre": "CENUSA - VENUX",
       "host": "172.16.172.4",
-      "usuario": "",
-      "password": ""
+      "usuario": "configure",
+      "password": "PON_AQUI_LA_CLAVE"
     },
     {
       "nombre": "SEDE - VENUX",
       "host": "172.16.178.3",
-      "usuario": "",
-      "password": ""
+      "usuario": "configure",
+      "password": "PON_AQUI_LA_CLAVE"
     }
   ]
 }

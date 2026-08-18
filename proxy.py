@@ -85,16 +85,24 @@ CTX_SSL.verify_mode = ssl.CERT_NONE  # los radios usan certificado autofirmado
 class ClienteRadio:
     """Descarga /cgi/dashboard.php manteniendo la sesion (cookie) si hace falta."""
 
+    # Usuario por defecto del firmware Mimosa (B24, B5c, C5x...). Se puede
+    # sobreescribir por radio en radios.json con el campo "usuario".
+    USUARIO_POR_DEFECTO = "configure"
+
     def __init__(self, host, usuario="", password="", timeout=8):
         self.host = host
-        self.usuario = usuario
+        self.usuario = usuario or self.USUARIO_POR_DEFECTO
         self.password = password
         self.timeout = timeout
-        self.opener = urllib.request.build_opener(
-            urllib.request.HTTPCookieProcessor(),
+        self.opener = self._nuevo_opener()
+
+    def _nuevo_opener(self):
+        op = urllib.request.build_opener(
+            urllib.request.HTTPCookieProcessor(),  # tarro de cookies propio (PHPSESSID)
             urllib.request.HTTPSHandler(context=CTX_SSL),
         )
-        self.opener.addheaders = [("User-Agent", "dashboard-radioenlaces/1.0")]
+        op.addheaders = [("User-Agent", "dashboard-radioenlaces/1.0")]
+        return op
 
     def _url(self, ruta):
         return "https://%s%s" % (self.host, ruta)
@@ -104,42 +112,62 @@ class ClienteRadio:
             return resp.read().decode("utf-8", "replace")
 
     def _login(self):
-        """Intenta autenticarse. Distintas versiones de firmware usan rutas
-        distintas, asi que probamos las conocidas hasta que una funcione."""
+        """Reproduce el login de la interfaz web de Mimosa:
+          1. GET /                      -> obtiene la cookie PHPSESSID
+          2. POST /?q=index.login&mimosa_ajax=1  con username y password
+        La sesion queda guardada en el tarro de cookies del opener.
+        """
         if not self.password:
             return False
+        # Sesion limpia: descartamos cualquier cookie caducada anterior
+        self.opener = self._nuevo_opener()
+        # 1. Cookie de sesion
+        try:
+            self._get("/")
+        except Exception:  # noqa: BLE001
+            pass
+        # 2. Autenticacion
         datos = urllib.parse.urlencode(
-            {
-                "username": self.usuario or "configure",
-                "password": self.password,
-                "user": self.usuario or "configure",
-                "pass": self.password,
-            }
+            {"username": self.usuario, "password": self.password}
         ).encode()
-        for ruta in ("/cgi/login.php", "/login.php", "/cgi/auth.php"):
-            try:
-                req = urllib.request.Request(self._url(ruta), data=datos)
-                with self.opener.open(req, timeout=self.timeout) as resp:
-                    resp.read()
-                log("%s: login correcto via %s" % (self.host, ruta))
-                return True
-            except Exception:  # noqa: BLE001
-                continue
-        return False
+        req = urllib.request.Request(
+            self._url("/?q=index.login&mimosa_ajax=1"),
+            data=datos,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        with self.opener.open(req, timeout=self.timeout) as resp:
+            cuerpo = resp.read().decode("utf-8", "replace")
+        # La respuesta trae "role": 1/2 si autentica, 0 si la clave es incorrecta
+        try:
+            rol = json.loads(cuerpo).get("role", 0)
+        except Exception:  # noqa: BLE001
+            rol = 0
+        if not rol:
+            raise RuntimeError("login rechazado (usuario o contrasena incorrectos)")
+        return True
+
+    @staticmethod
+    def _es_payload(obj):
+        """El JSON bueno trae 'realtime'. Sin sesion, el radio devuelve {'role':0}."""
+        return isinstance(obj, dict) and "realtime" in obj
 
     def leer(self):
-        """Devuelve el dict JSON crudo del radio."""
-        crudo = self._get("/cgi/dashboard.php")
-        if not crudo.lstrip().startswith("{"):
-            # Probablemente nos ha devuelto la pagina de login
-            if self._login():
-                crudo = self._get("/cgi/dashboard.php")
-        if not crudo.lstrip().startswith("{"):
+        """Devuelve el dict JSON crudo del radio, autenticando si hace falta."""
+        try:
+            obj = json.loads(self._get("/cgi/dashboard.php"))
+        except Exception:  # noqa: BLE001
+            obj = None
+        if not self._es_payload(obj):
+            # Sesion inexistente o caducada: autenticamos y reintentamos una vez
+            if not self.password:
+                raise RuntimeError("radio sin contrasena configurada en radios.json")
+            self._login()
+            obj = json.loads(self._get("/cgi/dashboard.php"))
+        if not self._es_payload(obj):
             raise RuntimeError(
-                "El radio no devolvio JSON (sesion caducada, o hace falta "
-                "usuario/password en radios.json)"
+                "El radio no devolvio datos (revisa usuario/password en radios.json)"
             )
-        return json.loads(crudo)
+        return obj
 
 
 # ---------------------------------------------------------------------------
@@ -551,7 +579,7 @@ class Monitor:
                 "ts": int(time.time()),
                 "conectado": False,
                 "nivel": "caido",
-                "avisos": ["Sin respuesta del radio"],
+                "avisos": [str(exc) or "Sin respuesta del radio"],
                 "error": str(exc),
                 "local": {},
                 "remoto": {},
