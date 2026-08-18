@@ -210,6 +210,11 @@ CERAGON_SISTEMA = {
     "modelo": CERAGON_BASE + ".1.2.3.0",
 }
 
+# Throughput medio (Mbps) del PM de Capacity/Throughput. La tabla esta indexada
+# por [interfaz-de-grupo].[intervalo]; el intervalo 0 es la ventana de 15 min en
+# curso. Columna 5 / cualificador 2 = "Average throughput" (confirmado en GUI).
+CERAGON_OID_THROUGHPUT = CERAGON_BASE + ".6.3.4.3.1.1.5.2"
+
 _SNMP_DISPONIBLE = None
 
 
@@ -276,6 +281,31 @@ class ClienteCeragon:
                     indices.append(v)
         return indices
 
+    def _throughput_actual(self):
+        """Average throughput (Mbps) de la ventana de 15 min en curso.
+
+        Recorre la columna del PM y se queda con las entradas del intervalo 0
+        (ventana actual). Si hay varias interfaces, toma la mayor, que es la del
+        grupo agregado. Devuelve None si el radio no expone esta tabla.
+        """
+        try:
+            salida = self._correr("snmpbulkwalk", [CERAGON_OID_THROUGHPUT])
+        except Exception:  # noqa: BLE001
+            return None
+        mejor = None
+        for linea in salida.splitlines():
+            partes = linea.strip().split(None, 1)
+            if len(partes) != 2:
+                continue
+            oid = partes[0].lstrip(".")
+            # el ultimo segmento es el intervalo; 0 = ventana actual
+            if not oid.endswith(".0"):
+                continue
+            v = _f(partes[1])
+            if v is not None and (mejor is None or v > mejor):
+                mejor = v
+        return mejor
+
     def leer(self):
         indices = self._indices()
         if not indices:
@@ -301,7 +331,12 @@ class ClienteCeragon:
         for clave, oid in CERAGON_SISTEMA.items():
             sistema[clave] = valores.get(oid.lstrip("."))
 
-        return {"indices": indices, "portadoras": portadoras, "sistema": sistema}
+        return {
+            "indices": indices,
+            "portadoras": portadoras,
+            "sistema": sistema,
+            "throughput_mbps": self._throughput_actual(),
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -612,6 +647,7 @@ def parsear_ceragon(nombre, host, datos):
         "ancho_canal": None,
         "banda": None,
         "modulacion": etiqueta_modulacion(modulacion_raw),
+        "throughput_mbps": datos.get("throughput_mbps"),
         "remoto_rf": {},
         "tx_mcs": None, "rx_mcs": None, "tx_streams": None, "rx_streams": None,
         "tx_phy_mbps": None, "rx_phy_mbps": None,

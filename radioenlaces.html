@@ -211,9 +211,9 @@ function detalleHTML(r){
       </table>
       <h4>Radio</h4>
       <table>
+        <tr><td>Throughput (15 min)</td><td>${r.throughput_mbps!=null?n(r.throughput_mbps,0)+" Mbps":"--"}</td></tr>
         <tr><td>RSL por portadora</td><td>${listaVals(r.rssi_cadenas)} dBm</td></tr>
         <tr><td>MSE por portadora</td><td>${listaVals(r.evm_cadenas)} dB</td></tr>
-        <tr><td>Modulación (ACM)</td><td>${esc(r.modulacion||"--")}</td></tr>
         <tr><td>Potencia Tx</td><td>${n(r.tx_power)} dBm</td></tr>
         <tr><td>Frecuencia Tx / Rx</td><td>${num(r.freq1)} / ${num(r.freq2)} MHz</td></tr>
       </table>
@@ -397,12 +397,10 @@ function render(data){
         // --- Calidad ---
         const cal = r.evm_medio;
         const cc = colorCalidad(cal);
-        const modul = esCeragon
-          ? (r.modulacion || "--")
-          : (r.tx_mcs!=null ? `MCS ${r.tx_mcs}/${r.rx_mcs}` : "--");
+        const tput = (esCeragon && r.throughput_mbps!=null) ? `⇅ throughput ${n(r.throughput_mbps,0)} Mbps` : "";
         const extra = esCeragon
-          ? `${modul}`
-          : `${modul}${r.snr!=null?` · SNR ${n(r.snr)} dB`:""}`;
+          ? tput
+          : `${r.tx_mcs!=null ? `MCS ${r.tx_mcs}/${r.rx_mcs}` : "--"}${r.snr!=null?` · SNR ${n(r.snr)} dB`:""}`;
 
         inner = `<div class="svals">
             <div class="sensor" data-type="sig">
