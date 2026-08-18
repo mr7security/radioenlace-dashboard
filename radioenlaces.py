@@ -210,10 +210,15 @@ CERAGON_SISTEMA = {
     "modelo": CERAGON_BASE + ".1.2.3.0",
 }
 
-# Throughput medio (Mbps) del PM de Capacity/Throughput. La tabla esta indexada
-# por [interfaz-de-grupo].[intervalo]; el intervalo 0 es la ventana de 15 min en
-# curso. Columna 5 / cualificador 2 = "Average throughput" (confirmado en GUI).
-CERAGON_OID_THROUGHPUT = CERAGON_BASE + ".6.3.4.3.1.1.5.2"
+# PM de Capacity/Throughput. La tabla esta indexada por [interfaz-de-grupo].[intervalo];
+# usamos el intervalo 1 (ultimo cerrado), que es estable y cuadra con la GUI.
+# Columnas confirmadas contra la GUI (cualificador 2):
+CERAGON_PM = {
+    "cap_pico":  CERAGON_BASE + ".6.3.4.3.1.1.7.2",  # Peak capacity (Mbps)
+    "cap_media": CERAGON_BASE + ".6.3.4.3.1.1.8.2",  # Average capacity (Mbps)
+    "tp_pico":   CERAGON_BASE + ".6.3.4.3.1.1.4.2",  # Peak throughput (Mbps)
+    "tp_media":  CERAGON_BASE + ".6.3.4.3.1.1.5.2",  # Average throughput (Mbps)
+}
 
 _SNMP_DISPONIBLE = None
 
@@ -281,15 +286,13 @@ class ClienteCeragon:
                     indices.append(v)
         return indices
 
-    def _throughput_actual(self):
-        """Average throughput (Mbps) de la ventana de 15 min en curso.
+    def _pm_columna(self, base_oid):
+        """Valor de una columna del PM en el ultimo intervalo cerrado (intervalo 1).
 
-        Recorre la columna del PM y se queda con las entradas del intervalo 0
-        (ventana actual). Si hay varias interfaces, toma la mayor, que es la del
-        grupo agregado. Devuelve None si el radio no expone esta tabla.
+        Si hay varias interfaces toma la mayor (grupo agregado). None si falla.
         """
         try:
-            salida = self._correr("snmpbulkwalk", [CERAGON_OID_THROUGHPUT])
+            salida = self._correr("snmpbulkwalk", [base_oid])
         except Exception:  # noqa: BLE001
             return None
         mejor = None
@@ -298,13 +301,17 @@ class ClienteCeragon:
             if len(partes) != 2:
                 continue
             oid = partes[0].lstrip(".")
-            # el ultimo segmento es el intervalo; 0 = ventana actual
-            if not oid.endswith(".0"):
+            # el ultimo segmento es el intervalo; 1 = ultimo cerrado
+            if oid.rsplit(".", 1)[-1] != "1":
                 continue
             v = _f(partes[1])
             if v is not None and (mejor is None or v > mejor):
                 mejor = v
         return mejor
+
+    def _pm_capacidad(self):
+        """Devuelve las 4 metricas de Capacity/Throughput (Mbps) del PM."""
+        return {clave: self._pm_columna(oid) for clave, oid in CERAGON_PM.items()}
 
     def leer(self):
         indices = self._indices()
@@ -335,7 +342,7 @@ class ClienteCeragon:
             "indices": indices,
             "portadoras": portadoras,
             "sistema": sistema,
-            "throughput_mbps": self._throughput_actual(),
+            "pm": self._pm_capacidad(),
         }
 
 
@@ -647,7 +654,8 @@ def parsear_ceragon(nombre, host, datos):
         "ancho_canal": None,
         "banda": None,
         "modulacion": etiqueta_modulacion(modulacion_raw),
-        "throughput_mbps": datos.get("throughput_mbps"),
+        "pm": datos.get("pm") or {},   # cap_pico, cap_media, tp_pico, tp_media (Mbps)
+        "throughput_mbps": (datos.get("pm") or {}).get("tp_media"),
         "remoto_rf": {},
         "tx_mcs": None, "rx_mcs": None, "tx_streams": None, "rx_streams": None,
         "tx_phy_mbps": None, "rx_phy_mbps": None,

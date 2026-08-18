@@ -64,6 +64,15 @@
   .value small{font-size:.95rem; font-weight:500; color:var(--muted)}
   .v-ok{color:var(--ok)} .v-warn{color:var(--warn)} .v-alarm{color:var(--alarm)}
   .sub{font-size:.66rem; color:var(--muted); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  /* rejilla compacta 2x2 con las 4 metricas de Capacity/Throughput */
+  .pm4{display:grid; grid-template-columns:1fr 1fr; gap:2px 12px; margin-top:6px; width:100%; max-width:280px}
+  .pm4 .cell{display:flex; justify-content:space-between; gap:6px; font-size:.64rem; line-height:1.35}
+  .pm4 .cell span{color:var(--muted); white-space:nowrap}
+  .pm4 .cell b{font-variant-numeric:tabular-nums; font-weight:700}
+  .pm4 .cap{font-size:.58rem; color:var(--muted); grid-column:1 / -1; text-align:center; margin-top:1px}
+  body.tv .pm4{font-size:clamp(.55rem,.72vw,1.05rem); max-width:none}
+  body.tv .pm4 .cell{font-size:clamp(.6rem,.85vw,1.25rem)}
+  body.tv .pm4 .cap{font-size:clamp(.5rem,.7vw,1rem)}
   .bar{position:relative; height:6px; background:#0b1120; border-radius:3px; margin:7px 0 3px}
   .bar .fill{position:absolute; top:0; bottom:0; border-radius:3px}
   .bar .dot{position:absolute; top:-3px; width:12px; height:12px; border-radius:50%; border:2px solid var(--bg); transform:translateX(-50%)}
@@ -194,6 +203,20 @@ function uptimeTexto(seg){
 }
 const listaVals = a => (a||[]).filter(x=>x!=null).map(x=>n(x)).join(" / ") || "--";
 const primerReboot = s => String(s||"--").split(" (")[0];
+const pmv = (pm,k) => { const v=(pm||{})[k]; return (v===null||v===undefined)?"--":Math.round(v); };
+
+/* Rejilla compacta 2x2 con las 4 metricas de Capacity/Throughput (Mbps) */
+function pm4HTML(pm){
+  pm = pm || {};
+  const m = v => (v===null||v===undefined) ? "--" : Math.round(v);
+  return `<div class="pm4">
+    <div class="cell"><span>Tput medio</span><b>${m(pm.tp_media)}</b></div>
+    <div class="cell"><span>Tput pico</span><b>${m(pm.tp_pico)}</b></div>
+    <div class="cell"><span>Cap. media</span><b>${m(pm.cap_media)}</b></div>
+    <div class="cell"><span>Cap. pico</span><b>${m(pm.cap_pico)}</b></div>
+    <div class="cap">PM 15 min · Mbps</div>
+  </div>`;
+}
 
 /* Bloque de detalle completo (solo vista normal; oculto en TV) */
 function detalleHTML(r){
@@ -209,9 +232,13 @@ function detalleHTML(r){
         <tr><td>IP extremo remoto</td><td>${esc(rem.ip||"--")}</td></tr>
         <tr><td>Uptime</td><td>${uptimeTexto(r.uptime_s)}</td></tr>
       </table>
+      <h4>Capacity / Throughput (PM 15 min)</h4>
+      <table>
+        <tr><td>Throughput medio / pico</td><td>${pmv(r.pm,"tp_media")} / ${pmv(r.pm,"tp_pico")} Mbps</td></tr>
+        <tr><td>Capacidad media / pico</td><td>${pmv(r.pm,"cap_media")} / ${pmv(r.pm,"cap_pico")} Mbps</td></tr>
+      </table>
       <h4>Radio</h4>
       <table>
-        <tr><td>Throughput (15 min)</td><td>${r.throughput_mbps!=null?n(r.throughput_mbps,0)+" Mbps":"--"}</td></tr>
         <tr><td>RSL por portadora</td><td>${listaVals(r.rssi_cadenas)} dBm</td></tr>
         <tr><td>MSE por portadora</td><td>${listaVals(r.evm_cadenas)} dB</td></tr>
         <tr><td>Potencia Tx</td><td>${n(r.tx_power)} dBm</td></tr>
@@ -397,10 +424,10 @@ function render(data){
         // --- Calidad ---
         const cal = r.evm_medio;
         const cc = colorCalidad(cal);
-        const tput = (esCeragon && r.throughput_mbps!=null) ? `⇅ throughput ${n(r.throughput_mbps,0)} Mbps` : "";
-        const extra = esCeragon
-          ? tput
-          : `${r.tx_mcs!=null ? `MCS ${r.tx_mcs}/${r.rx_mcs}` : "--"}${r.snr!=null?` · SNR ${n(r.snr)} dB`:""}`;
+        // Ceragon: rejilla 2x2 con throughput/capacidad; Mimosa: linea de modulacion+SNR
+        const calidadExtra = esCeragon
+          ? pm4HTML(r.pm)
+          : `<div class="sub">${esc(`${r.tx_mcs!=null ? `MCS ${r.tx_mcs}/${r.rx_mcs}` : "--"}${r.snr!=null?` · SNR ${n(r.snr)} dB`:""}`)}</div>`;
 
         inner = `<div class="svals">
             <div class="sensor" data-type="sig">
@@ -412,7 +439,7 @@ function render(data){
             <div class="sensor" data-type="qual">
               <div class="label">✦ Calidad ${esCeragon?"MSE":"EVM"}</div>
               <div class="value v-${cc}">${n(cal)}<small> dB</small></div>
-              <div class="sub">${esc(extra)}</div>
+              ${calidadExtra}
             </div>
           </div>
           ${detalleHTML(r)}
