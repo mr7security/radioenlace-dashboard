@@ -1,5 +1,5 @@
 [Unit]
-Description=Dashboard de Radioenlaces (Mimosa)
+Description=Dashboard de Radioenlaces (Mimosa + Ceragon)
 After=network-online.target
 Wants=network-online.target
 
@@ -8,7 +8,7 @@ Type=simple
 User=dashboard-radio
 Group=dashboard-radio
 WorkingDirectory=/opt/dashboard-radioenlaces
-ExecStart=/usr/bin/python3 /opt/dashboard-radioenlaces/proxy.py
+ExecStart=/usr/bin/python3 /opt/dashboard-radioenlaces/radioenlaces.py
 Restart=always
 RestartSec=10
 StandardOutput=journal

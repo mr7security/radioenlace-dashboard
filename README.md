@@ -1,19 +1,31 @@
-# Dashboard de Radioenlaces (Mimosa)
+# Dashboard de Radioenlaces (Mimosa + Ceragon)
 
-Monitorizacion de **señal y calidad RF** de los enlaces punto a punto Mimosa.
-Un unico servicio en Python (solo libreria estandar, sin dependencias) sondea los
-radios, guarda historico en SQLite y sirve el dashboard web.
+Monitorizacion de **señal y calidad RF** de los enlaces punto a punto. Un unico
+servicio en Python (solo libreria estandar) sondea los radios de dos tecnologias,
+guarda historico en SQLite y sirve el dashboard web.
+
+- **Mimosa** (serie B): se leen por HTTP/JSON con login.
+- **Ceragon** (FibeAir IP-20/IP-50): se leen por **SNMP v2c** (requiere las
+  utilidades `snmp` del sistema: `sudo apt-get install snmp`).
 
 Enlaces de la primera etapa:
 
-| Enlace | Radio consultado |
-|---|---|
-| SEDE - AZULMED | 172.16.177.4 |
-| CENUSA - VENUX | 172.16.172.4 |
-| SEDE - VENUX | 172.16.178.3 |
+| Enlace | Radio | Tecnologia |
+|---|---|---|
+| SEDE - AZULMED | 172.16.177.4 | Mimosa |
+| CENUSA - VENUX | 172.16.172.4 | Mimosa |
+| SEDE - VENUX | 172.16.178.3 | Mimosa |
+| CERAGON STN-VIT | 172.16.166.3 | Ceragon |
+| CERAGON STN-TESANY | 172.16.170.11 | Ceragon |
+| CERAGON STN-CL1 | 172.16.171.11 | Ceragon |
+| CERAGON STN-SEDE | 172.16.176.3 | Ceragon |
 
 Basta con apuntar a **un extremo de cada enlace**: el radio ya reporta tambien los
 datos del otro extremo.
+
+El dashboard tiene una **vista normal** de navegador y un **Modo TV** (boton arriba
+a la derecha): pantalla completa, fuentes grandes y overlay de "SIN CONEXIÓN",
+igual que el dashboard de sensores.
 
 ---
 
@@ -21,12 +33,12 @@ datos del otro extremo.
 
 | Archivo | Para que sirve |
 |---|---|
-| `proxy.py` | El servicio: sondea los radios, guarda historico y sirve la web |
-| `dashboard.html` | La interfaz. La sirve el propio proxy |
+| `radioenlaces.py` | El servicio: sondea los radios, guarda historico y sirve la web |
+| `radioenlaces.html` | La interfaz (vista normal + modo TV). La sirve el propio servicio |
 | `radios.json.example` | Plantilla de configuracion |
 | `deploy.sh` | Instala / actualiza todo en un Ubuntu |
 | `dashboard-radioenlaces.service` | Unidad systemd (arranque automatico) |
-| `ejemplo_respuesta.json` | Captura real de un radio, para probar el parser sin red |
+| `ejemplo_respuesta.json` | Captura real de un Mimosa, para probar el parser sin red |
 | `.gitignore` | Excluye `radios.json` y la base de datos |
 
 `radios.json` (la configuracion real) y `radioenlaces.db` (el historico) **no se
@@ -93,7 +105,7 @@ sudo systemctl restart dashboard-radioenlaces
 
 ```bash
 # Lectura puntual de los tres radios, por consola
-sudo -u dashboard-radio python3 /opt/dashboard-radioenlaces/proxy.py --once
+sudo -u dashboard-radio python3 /opt/dashboard-radioenlaces/radioenlaces.py --once
 
 # Log en directo
 journalctl -u dashboard-radioenlaces -f
@@ -155,6 +167,22 @@ GET https://<ip-del-radio>/cgi/dashboard.php
 Devuelve un JSON con `realtime.signalmeter`, `connection`, `device_info`,
 `remote_info`, `mimo` y `gps`.
 
+### Autenticacion
+
+El radio solo entrega los datos si hay sesion iniciada; sin ella devuelve
+`{"role":0}`. El proxy reproduce el login de la propia interfaz web:
+
+1. `GET /` para obtener la cookie de sesion (`PHPSESSID`).
+2. `POST /?q=index.login&mimosa_ajax=1` con `username` y `password`.
+3. `GET /cgi/dashboard.php` con esa cookie.
+
+Por eso en `radios.json` hay que poner `usuario` (normalmente `configure`) y
+`password` de cada radio. Si la sesion caduca, el proxy vuelve a autenticar solo.
+
+> Se probo tambien SNMP y la API REST: SNMP no esta disponible en el firmware de
+> estos B24, y la cuenta REST no expone endpoints utiles en esta version. El login
+> web es la via que funciona.
+
 > **Seguridad:** ese mismo JSON incluye un bloque `config` con la passphrase WPA en
 > claro, el hash de la contraseña de administrador y la community SNMP. El proxy
 > **descarta ese bloque por completo**: nunca se guarda en la base de datos ni llega
@@ -192,7 +220,7 @@ avisa pero el servicio no).
 | Degradado | RSSI ≤ −60 dBm, SNR < 25 dB, EVM peor que −20 dB, desequilibrio entre cadenas > 6 dB, PER > 2 %, menos de 4 satelites GPS, temperatura ≥ 65 °C, Ethernet degradada |
 | Sin enlace | El radio no responde o reporta desconectado |
 
-Los umbrales estan al principio de `evaluar_estado()` en `proxy.py`, faciles de ajustar.
+Los umbrales estan al principio de `evaluar_estado()` en `radioenlaces.py`, faciles de ajustar.
 
 ---
 

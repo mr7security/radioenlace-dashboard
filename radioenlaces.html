@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Estado de Radioenlaces — SGP</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0f172a; --card:#1e293b; --card2:#0f1c30; --text:#e2e8f0; --muted:#94a3b8;
+    --ok:#22c55e; --alarm:#ef4444; --warn:#f59e0b; --off:#64748b; --accent:#38bdf8;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; padding:18px 22px}
+  header{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:16px}
+  h1{font-size:1.3rem; font-weight:600; text-transform:uppercase; letter-spacing:.03em}
+  h1 span{color:var(--accent)}
+  #clock{font-size:1.05rem; color:var(--muted); font-variant-numeric:tabular-nums}
+  .btns{display:flex; gap:8px; flex-wrap:wrap}
+  .btn{background:var(--card); color:var(--text); border:1px solid #334155; border-radius:8px;
+       padding:7px 13px; font-size:.85rem; cursor:pointer; text-transform:uppercase; letter-spacing:.02em}
+  .btn:hover{border-color:var(--accent)}
+  .btn.active{background:var(--accent); color:#0f172a; border-color:var(--accent); font-weight:600}
+  #banner{display:none; background:#3a2b12; border:1px solid var(--warn); border-radius:10px;
+          padding:12px 16px; margin-bottom:14px; font-size:.85rem}
+
+  /* ---------- secciones por tecnologia ---------- */
+  #sites{display:flex; flex-wrap:wrap; gap:14px; align-items:stretch}
+  .site{flex:1 1 100%}
+  .site.small{flex:1 1 360px}
+  .site{border-radius:16px; padding:14px 16px 10px;
+        background:linear-gradient(180deg, color-mix(in srgb, var(--sc) 10%, var(--bg)), var(--bg) 70%);
+        border:1px solid color-mix(in srgb, var(--sc) 35%, transparent);
+        border-top:4px solid var(--sc)}
+  .site-h{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:12px}
+  .site-name{display:flex; align-items:center; gap:10px; font-size:1.15rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase}
+  .site-name .swatch{width:14px; height:14px; border-radius:4px; background:var(--sc)}
+  .site-sum{display:flex; gap:8px; font-size:.78rem}
+  .pill{border-radius:99px; padding:3px 12px; font-weight:600; text-transform:uppercase; letter-spacing:.02em}
+  .pill.ok{background:rgba(34,197,94,.15); color:var(--ok)}
+  .pill.warn{background:rgba(245,158,11,.18); color:var(--warn)}
+  .pill.alarm{background:rgba(239,68,68,.2); color:var(--alarm)}
+  .pill.off{background:rgba(100,116,139,.2); color:var(--off)}
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px}
+
+  /* ---------- tarjetas ---------- */
+  .card{background:var(--card); border-radius:12px; padding:12px 14px; border-left:5px solid var(--sc)}
+  .card.warn{border-left-color:var(--warn)}
+  .card.alarm{border-left-color:var(--alarm); animation:blink 1.2s infinite}
+  .card.offline{border-left-color:var(--off); opacity:.7}
+  @keyframes blink{50%{background:#3b1f2b}}
+  .card-h{display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:8px}
+  .card-h h2{font-size:1.05rem; font-weight:700; text-transform:uppercase; letter-spacing:.02em}
+  .card-h .tech{color:var(--muted); font-size:.62rem; text-transform:uppercase; letter-spacing:.06em; margin-left:auto; margin-right:8px}
+  .status{font-size:.75rem; font-weight:700; white-space:nowrap}
+  .status.ok{color:var(--ok)} .status.warn{color:var(--warn)} .status.alarm{color:var(--alarm)} .status.off{color:var(--off)}
+  .svals{display:flex; flex-direction:column; gap:10px}
+  /* orden uniforme en ambas vistas: SEÑAL arriba, CALIDAD abajo */
+  .svals, .charts{display:flex; flex-direction:column}
+  .sensor[data-type="sig"],  .chartblock[data-type="sig"]{order:1}
+  .sensor[data-type="qual"], .chartblock[data-type="qual"]{order:2}
+  .sensor{background:var(--card2); border-radius:10px; padding:8px 12px 10px; flex:1; min-width:0}
+  .label{font-size:.66rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; white-space:nowrap}
+  .value{font-size:2.3rem; font-weight:800; line-height:1.15; font-variant-numeric:tabular-nums; white-space:nowrap}
+  .value small{font-size:.95rem; font-weight:500; color:var(--muted)}
+  .v-ok{color:var(--ok)} .v-warn{color:var(--warn)} .v-alarm{color:var(--alarm)}
+  .sub{font-size:.66rem; color:var(--muted); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .bar{position:relative; height:6px; background:#0b1120; border-radius:3px; margin:7px 0 3px}
+  .bar .fill{position:absolute; top:0; bottom:0; border-radius:3px}
+  .bar .dot{position:absolute; top:-3px; width:12px; height:12px; border-radius:50%; border:2px solid var(--bg); transform:translateX(-50%)}
+  .rangetxt{display:flex; justify-content:space-between; font-size:.62rem; color:var(--muted)}
+  .charts{margin-top:10px}
+  .chartblock{margin-bottom:6px}
+  .chartblock .label{margin-bottom:2px}
+  canvas.chart{width:100%; height:58px; display:block}
+  .err{color:var(--muted); font-size:.8rem; line-height:1.4}
+  .card > .err{flex:1; display:flex; flex-direction:column; align-items:center;
+               justify-content:center; text-align:center; gap:4px; min-height:60px}
+  .card > .err::before{content:"⚠"; font-size:1.6em; color:var(--off)}
+  .card{display:flex; flex-direction:column}
+  .upd{font-size:.68rem; color:var(--muted); text-align:right; margin-top:6px}
+
+  /* ================= MODO TV: rejilla proporcional que llena la pantalla ========= */
+  body.tv{padding:10px 12px; overflow:hidden}
+  body.tv header{margin-bottom:8px}
+  body.tv h1{font-size:1.1rem}
+  body.tv .btns .btn{padding:4px 9px; font-size:.72rem}
+  body.tv .rangetxt, body.tv #banner, body.tv .card-h .tech, body.tv .upd{display:none}
+  body.tv #sites{display:grid; gap:8px; grid-auto-rows:1fr; align-content:stretch}
+  body.tv .site{min-height:0; display:flex; flex-direction:column; margin:0; padding:6px 10px 8px}
+  body.tv .site-h{margin-bottom:4px}
+  body.tv .site-name{font-size:clamp(1.4rem, 2.3vw, 3.2rem); color:var(--sc); font-weight:800}
+  body.tv .site-sum .pill{padding:2px 8px; font-size:clamp(.65rem, .8vw, 1rem)}
+  body.tv .site .cards{flex:1; min-height:0; grid-auto-flow:column; grid-auto-columns:1fr;
+                       grid-template-columns:none; gap:6px}
+  body.tv .card{min-height:0; overflow:hidden; display:flex; flex-direction:column; padding:8px 10px}
+  body.tv .card-h{margin-bottom:2px}
+  body.tv .card-h h2{font-size:clamp(1.25rem, 1.85vw, 2.7rem)}
+  body.tv .status{font-size:clamp(.7rem, .95vw, 1.3rem)}
+  body.tv .svals, body.tv .charts{display:flex; flex-direction:column}
+  body.tv .sensor[data-type="sig"],  body.tv .chartblock[data-type="sig"]{order:1}
+  body.tv .sensor[data-type="qual"], body.tv .chartblock[data-type="qual"]{order:2}
+  body.tv .svals{flex:1; gap:6px; align-items:stretch}
+  body.tv .sensor{padding:4px 6px; display:flex; flex-direction:column;
+                  justify-content:center; align-items:center; text-align:center; min-width:0}
+  body.tv .label{font-size:clamp(.6rem, .95vw, 1.25rem)}
+  body.tv .value{font-size:clamp(2.4rem, 4.6vw, 8rem); white-space:nowrap; line-height:1.02; font-weight:800}
+  body.tv .value small{font-size:.4em}
+  body.tv .sub{font-size:clamp(.6rem, .9vw, 1.15rem)}
+  body.tv .bar{margin:5px 0 0; width:100%}
+  body.tv .charts{min-height:0; margin-top:4px}
+  body.tv .chartblock{margin-bottom:2px}
+  body.tv canvas.chart{height:clamp(22px, 4.5vh, 60px)}
+
+  /* ===== Cartel de SIN CONEXIÓN a pantalla completa (solo modo TV) ===== */
+  #offline-overlay{position:fixed; inset:0; z-index:9999; display:none;
+    flex-direction:column; align-items:center; justify-content:center; text-align:center;
+    background:rgba(8,12,24,.96)}
+  #offline-overlay.show{display:flex}
+  .ov-inner{animation:ovpulse 1.5s ease-in-out infinite}
+  .ov-icon{font-size:clamp(4rem,13vh,11rem); line-height:1; color:var(--alarm)}
+  .ov-title{font-size:clamp(3rem,11vw,10rem); font-weight:900; color:var(--alarm);
+    letter-spacing:.06em; margin:.1em 0 .05em}
+  .ov-sub{font-size:clamp(1rem,2.6vw,2.2rem); color:var(--muted); margin-bottom:.5em}
+  .ov-timer{font-size:clamp(2.2rem,7vw,6rem); font-weight:800; color:#e2e8f0;
+    font-variant-numeric:tabular-nums; letter-spacing:.04em}
+  @keyframes ovpulse{50%{opacity:.5}}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex; align-items:center; gap:14px">
+    <h1>Estado de <span>Radioenlaces</span></h1>
+  </div>
+  <div class="btns">
+    <button class="btn" id="b1h" onclick="setRange(1)">1h</button>
+    <button class="btn active" id="b6h" onclick="setRange(6)">6h</button>
+    <button class="btn" id="b24h" onclick="setRange(24)">24h</button>
+    <button class="btn" id="bAlert" onclick="toggleAlerts()">🔔 Alertas: OFF</button>
+    <button class="btn" id="bTV" onclick="toggleTV()">🖥️ Modo TV</button>
+  </div>
+  <div id="clock">--:--:--</div>
+</header>
+<div id="banner"></div>
+<div id="sites"></div>
+
+<div id="offline-overlay">
+  <div class="ov-inner">
+    <div class="ov-icon">⚠</div>
+    <div class="ov-title">SIN CONEXIÓN</div>
+    <div class="ov-sub">No se recibe respuesta del servidor</div>
+    <div class="ov-timer" id="ov-timer">00:00:00</div>
+  </div>
+</div>
+
+<script>
+const REFRESH_S = 15;
+const HIST_REFRESH_S = 60;
+
+// Color identificativo por tecnologia (fuera del semaforo de estado)
+const TECH_COLORS = { "mimosa":"#38bdf8", "ceragon":"#a78bfa" };
+const TECH_NOMBRE = { "mimosa":"MIMOSA", "ceragon":"CERAGON" };
+
+let rangeH = 6;
+let alertsOn = false;
+try{ alertsOn = localStorage.getItem("alertsOn") === "1"; }catch(e){}
+let histSeries = {};   // key "nombre|sig" / "nombre|qual" -> [[ts,v],...]
+let radiosActuales = [];
+let prevBad = {};
+let audioCtx = null;
+
+const $ = id => document.getElementById(id);
+const n = (v,d=1) => (v===null||v===undefined||isNaN(v)) ? "--" : Number(v).toFixed(d);
+
+/* ---------- alertas ---------- */
+function beep(){
+  if(!alertsOn) return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.frequency.value = 880; g.gain.value = .15;
+    o.start(); o.stop(audioCtx.currentTime + .4);
+  }catch(e){}
+}
+function notify(title, body){
+  if(!alertsOn || !("Notification" in window)) return;
+  if(Notification.permission === "granted") new Notification(title, {body});
+}
+function toggleAlerts(){
+  alertsOn = !alertsOn;
+  try{ localStorage.setItem("alertsOn", alertsOn ? "1" : "0"); }catch(e){}
+  if(alertsOn && "Notification" in window && Notification.permission === "default")
+    Notification.requestPermission();
+  if(alertsOn) beep();
+  paintAlertBtn();
+}
+function paintAlertBtn(){
+  const b = $("bAlert");
+  b.textContent = "🔔 Alertas: " + (alertsOn ? "ON" : "OFF");
+  b.classList.toggle("active", alertsOn);
+}
+function toggleTV(){
+  document.body.classList.toggle("tv");
+  const on = document.body.classList.contains("tv");
+  $("bTV").classList.toggle("active", on);
+  if(on){
+    document.documentElement.requestFullscreen?.().catch(()=>{});
+  }else if(document.fullscreenElement){
+    document.exitFullscreen();
+  }
+  drawAllCharts();
+  fitTV();
+  updateOverlay();
+}
+
+/* Modo TV: rejilla que ocupa toda la pantalla. Secciones grandes (>=4 enlaces)
+   ocupan una fila entera; el resto se reparte en columnas iguales. */
+function fitTV(){
+  const s = $("sites");
+  const sites = [...s.children];
+  s.style.height = "";
+  s.style.gridTemplateColumns = "";
+  sites.forEach(el => el.style.gridColumn = "");
+  if(!document.body.classList.contains("tv")) return;
+  const header = document.querySelector("header");
+  s.style.height = (window.innerHeight - header.offsetHeight - 12) + "px";
+  const nCards = el => el.querySelectorAll(".card").length;
+  const isBig = el => nCards(el) >= 4;
+  const smalls = sites.filter(el => !isBig(el));
+  const totalSmall = smalls.reduce((a, el) => a + nCards(el), 0) || 1;
+  s.style.gridTemplateColumns = `repeat(${totalSmall}, 1fr)`;
+  sites.forEach(el => {
+    el.style.gridColumn = isBig(el) ? "1 / -1" : `span ${nCards(el)}`;
+  });
+  drawAllCharts();
+}
+function setRange(h){
+  rangeH = h;
+  ["b1h","b6h","b24h"].forEach(id=>$(id).classList.remove("active"));
+  $("b"+h+"h").classList.add("active");
+  drawAllCharts();
+}
+
+/* ---------- escalas de color RF ---------- */
+// Señal: RSSI/RSL en dBm. Bar de -90 (0%) a -30 (100%).
+function colorSenal(v){
+  if(v===null||v===undefined||isNaN(v)) return "off";
+  if(v >= -60) return "ok";
+  if(v >= -70) return "warn";
+  return "alarm";
+}
+function pctSenal(v){ return Math.max(0, Math.min(100, (v + 90) / 60 * 100)); }
+// Calidad: EVM/MSE en dB, mas negativo = mejor.
+function colorCalidad(v){
+  if(v===null||v===undefined||isNaN(v)) return "off";
+  if(v <= -24) return "ok";
+  if(v <= -20) return "warn";
+  return "alarm";
+}
+
+const NIVEL_INFO = {
+  ok:      {cls:"ok",    txt:"✔ OK",         card:""},
+  aviso:   {cls:"warn",  txt:"⚠ DEGRADADO",  card:"warn"},
+  critico: {cls:"alarm", txt:"⚠ CRÍTICO",    card:"alarm"},
+  caido:   {cls:"off",   txt:"✖ CAÍDO",      card:"offline"},
+};
+
+/* ---------- render ---------- */
+function render(data){
+  radiosActuales = (data.radios||[]).map(r=>r.nombre);
+  // agrupar por tecnologia conservando el orden
+  const groups = [];
+  const byTech = {};
+  (data.radios||[]).forEach(r=>{
+    const tech = (r.tipo || "mimosa").toLowerCase();
+    if(!byTech[tech]){ byTech[tech] = {tech, radios:[]}; groups.push(byTech[tech]); }
+    byTech[tech].radios.push(r);
+  });
+
+  let html = "";
+  groups.forEach(g=>{
+    const color = TECH_COLORS[g.tech] || "#38bdf8";
+    let nOk=0, nWarn=0, nAlarm=0, nOff=0;
+    let cardsHtml = "";
+    g.radios.forEach(r=>{
+      const nivel = r.nivel || "caido";
+      const info = NIVEL_INFO[nivel] || NIVEL_INFO.caido;
+      if(nivel==="ok") nOk++;
+      else if(nivel==="aviso") nWarn++;
+      else if(nivel==="critico") nAlarm++;
+      else nOff++;
+
+      // alerta sonora al entrar en aviso/critico/caido
+      const malo = nivel==="critico" || nivel==="caido" || nivel==="aviso";
+      if(malo && !prevBad[r.nombre]){
+        beep();
+        notify((nivel==="caido"?"✖ ":"⚠ ") + r.nombre, (r.avisos||[]).join(" · ") || info.txt);
+      }
+      prevBad[r.nombre] = malo;
+
+      let inner;
+      if(nivel==="caido"){
+        inner = `<div class="err">Sin conexión: ${esc((r.avisos&&r.avisos[0]) || r.error || "no responde")}</div>`;
+      }else{
+        const esCeragon = r.tipo === "ceragon";
+        // --- Señal ---
+        const senal = r.rssi_cadena_media;
+        const cs = colorSenal(senal);
+        const cadenas = (r.rssi_cadenas||[]).filter(x=>x!=null).map(x=>n(x)).join(" / ");
+        const barCol = cs==="alarm"?"var(--alarm)":cs==="warn"?"var(--warn)":"var(--ok)";
+        const pct = pctSenal(senal);
+        const barSenal = (senal!=null) ? `<div class="bar">
+              <div class="fill" style="left:0;width:${pct}%;background:${barCol}"></div>
+              <div class="dot" style="left:${pct}%;background:${barCol}"></div>
+            </div>
+            <div class="rangetxt"><span>-90</span><span>-30 dBm</span></div>` : "";
+        const subSenal = cadenas ? `${esCeragon?"portadoras":"cadenas"}: ${cadenas} dBm` : "";
+
+        // --- Calidad ---
+        const cal = r.evm_medio;
+        const cc = colorCalidad(cal);
+        const modul = esCeragon
+          ? (r.modulacion || "--")
+          : (r.tx_mcs!=null ? `MCS ${r.tx_mcs}/${r.rx_mcs}` : "--");
+        const extra = esCeragon
+          ? `${modul}`
+          : `${modul}${r.snr!=null?` · SNR ${n(r.snr)} dB`:""}`;
+
+        inner = `<div class="svals">
+            <div class="sensor" data-type="sig">
+              <div class="label">📶 ${esCeragon?"RSL":"RSSI"} señal</div>
+              <div class="value v-${cs}">${n(senal)}<small> dBm</small></div>
+              ${barSenal}
+              <div class="sub">${subSenal}</div>
+            </div>
+            <div class="sensor" data-type="qual">
+              <div class="label">✦ Calidad ${esCeragon?"MSE":"EVM"}</div>
+              <div class="value v-${cc}">${n(cal)}<small> dB</small></div>
+              <div class="sub">${esc(extra)}</div>
+            </div>
+          </div>
+          <div class="charts">
+            <div class="chartblock" data-type="sig">
+              <div class="label">Señal — histórico</div>
+              <canvas class="chart" data-key="${esc(r.nombre)}|sig" data-color="${color}"></canvas>
+            </div>
+            <div class="chartblock" data-type="qual">
+              <div class="label">Calidad — histórico</div>
+              <canvas class="chart" data-key="${esc(r.nombre)}|qual" data-color="${color}"></canvas>
+            </div>
+          </div>`;
+      }
+
+      cardsHtml += `<div class="card ${info.card}">
+          <div class="card-h">
+            <h2>${esc(r.enlace || r.nombre)}</h2>
+            <span class="tech">${esc((r.local&&r.local.modelo)||"")}</span>
+            <span class="status ${info.cls}">${info.txt}</span>
+          </div>
+          ${inner}
+        </div>`;
+    });
+    const pills =
+      (nAlarm ? `<span class="pill alarm">⚠ ${nAlarm} crítico</span>` : "") +
+      (nWarn  ? `<span class="pill warn">⚠ ${nWarn} degradado</span>` : "") +
+      (nOff   ? `<span class="pill off">✖ ${nOff} caído</span>` : "") +
+      (!nAlarm && !nWarn && !nOff ? `<span class="pill ok">✔ Todo correcto</span>` : `<span class="pill ok">${nOk} OK</span>`);
+    html += `<section class="site ${g.radios.length === 1 ? "small" : ""}" style="--sc:${color}">
+        <div class="site-h">
+          <div class="site-name"><span class="swatch"></span>${TECH_NOMBRE[g.tech]||g.tech}</div>
+          <div class="site-sum">${pills}
+            <span class="pill" style="color:var(--muted)">${new Date().toLocaleTimeString()}</span>
+          </div>
+        </div>
+        <div class="cards">${cardsHtml}</div>
+      </section>`;
+  });
+  $("sites").innerHTML = html;
+  drawAllCharts();
+  fitTV();
+}
+
+function esc(s){ return String(s??"").replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- gráficas ---------- */
+function drawAllCharts(){
+  document.querySelectorAll("canvas.chart").forEach(cv=>{
+    drawChart(cv, histSeries[cv.dataset.key] || []);
+  });
+}
+function drawChart(cv, pts){
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if(!W || !H) return;
+  cv.width = W*dpr; cv.height = H*dpr;
+  const ctx = cv.getContext("2d");
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0,0,W,H);
+  const now = Date.now()/1000;
+  let from = now - rangeH*3600;
+  const data = pts.filter(p=>p[0] >= from);
+  if(data.length > 1 && data[0][0] > from) from = data[0][0];
+  ctx.font = "10px Segoe UI"; ctx.fillStyle = "#64748b";
+  if(data.length < 2){ ctx.fillText("Recopilando histórico…", 6, H/2+3); return; }
+  let lo = Math.min(...data.map(p=>p[1])), hi = Math.max(...data.map(p=>p[1]));
+  if(hi - lo < 1){ const mid=(hi+lo)/2; lo = mid-0.5; hi = mid+0.5; }
+  const pad = (hi-lo)*0.15; lo -= pad; hi += pad;
+  const X = t => (t-from)/(now-from) * (W-38) + 2;
+  const Y = v => H-10 - (v-lo)/(hi-lo) * (H-16);
+  const lineC = cv.dataset.color || "#38bdf8";
+  ctx.beginPath();
+  data.forEach((p,i)=> i ? ctx.lineTo(X(p[0]),Y(p[1])) : ctx.moveTo(X(p[0]),Y(p[1])));
+  ctx.strokeStyle = lineC; ctx.lineWidth = 1.6; ctx.stroke();
+  ctx.lineTo(X(data[data.length-1][0]), H-10); ctx.lineTo(X(data[0][0]), H-10); ctx.closePath();
+  ctx.fillStyle = lineC + "22"; ctx.fill();
+  ctx.fillStyle = "#94a3b8";
+  ctx.fillText(hi.toFixed(1), W-34, 10);
+  ctx.fillText(lo.toFixed(1), W-34, H-3);
+  const last = data[data.length-1][1];
+  ctx.fillStyle = "#e2e8f0";
+  ctx.fillText(last.toFixed(1), W-34, Y(last)+3);
+}
+
+/* ---------- deteccion de caida del servidor ---------- */
+let disconnectedSince = null;
+function fmtDur(secs){
+  const h = String(Math.floor(secs/3600)).padStart(2,"0");
+  const m = String(Math.floor(secs%3600/60)).padStart(2,"0");
+  const s = String(secs%60).padStart(2,"0");
+  return `${h}:${m}:${s}`;
+}
+function updateOverlay(){
+  const ov = $("offline-overlay");
+  const showBig = disconnectedSince && document.body.classList.contains("tv");
+  if(showBig){
+    ov.classList.add("show");
+    $("ov-timer").textContent = fmtDur(Math.floor((Date.now() - disconnectedSince)/1000));
+  }else{
+    ov.classList.remove("show");
+  }
+}
+
+/* ---------- ciclos ---------- */
+async function tickData(){
+  try{
+    const ctrl = new AbortController();
+    const to = setTimeout(()=>ctrl.abort(), 8000);
+    const r = await fetch("/api/estado", {cache:"no-store", signal:ctrl.signal});
+    clearTimeout(to);
+    const data = await r.json();
+    if(data.radios) render(data);
+    disconnectedSince = null;
+    $("banner").style.display = "none";
+    updateOverlay();
+  }catch(e){
+    if(!disconnectedSince) disconnectedSince = Date.now();
+    const b = $("banner");
+    b.style.display = "block";
+    b.textContent = "⚠️ No se puede contactar con el servicio de radioenlaces.";
+    updateOverlay();
+  }
+}
+async function tickHist(){
+  // una peticion por radio; construye las series de señal y calidad
+  const nuevos = {};
+  await Promise.all(radiosActuales.map(async nombre=>{
+    try{
+      const r = await fetch("/api/historico?radio="+encodeURIComponent(nombre)+"&horas=24", {cache:"no-store"});
+      const j = await r.json();
+      const sig=[], qual=[];
+      (j.datos||[]).forEach(d=>{
+        if(d.rssi!=null) sig.push([d.ts, d.rssi]);
+        const q = (d.snr!=null) ? d.snr : d.evm;   // SNR en Mimosa, MSE en Ceragon
+        if(q!=null) qual.push([d.ts, q]);
+      });
+      nuevos[nombre+"|sig"] = sig;
+      nuevos[nombre+"|qual"] = qual;
+    }catch(e){}
+  }));
+  histSeries = nuevos;
+  drawAllCharts();
+}
+setInterval(()=>{ $("clock").textContent = new Date().toLocaleTimeString(); updateOverlay(); }, 1000);
+paintAlertBtn();
+tickData().then(tickHist);
+setInterval(tickData, REFRESH_S*1000);
+setInterval(tickHist, HIST_REFRESH_S*1000);
+window.addEventListener("resize", () => { drawAllCharts(); fitTV(); });
+</script>
+</body>
+</html>

@@ -13,6 +13,8 @@ set -euo pipefail
 DESTINO="/opt/dashboard-radioenlaces"
 SERVICIO="dashboard-radioenlaces"
 USUARIO="dashboard-radio"
+APP="radioenlaces.py"
+WEB="radioenlaces.html"
 ORIGEN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 verde()  { printf '\033[0;32m%s\033[0m\n' "$*"; }
@@ -36,7 +38,7 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 verde "Python: $(python3 --version)"
 
-for archivo in proxy.py dashboard.html radios.json.example "${SERVICIO}.service"; do
+for archivo in "$APP" "$WEB" radios.json.example "${SERVICIO}.service"; do
   if [[ ! -f "$ORIGEN/$archivo" ]]; then
     rojo "Falta $archivo en $ORIGEN. ¿Has clonado el repositorio completo?"
     exit 1
@@ -51,8 +53,8 @@ fi
 
 # --- archivos ---------------------------------------------------------------
 mkdir -p "$DESTINO"
-install -m 644 "$ORIGEN/proxy.py"             "$DESTINO/proxy.py"
-install -m 644 "$ORIGEN/dashboard.html"       "$DESTINO/dashboard.html"
+install -m 644 "$ORIGEN/$APP"                 "$DESTINO/$APP"
+install -m 644 "$ORIGEN/$WEB"                 "$DESTINO/$WEB"
 install -m 644 "$ORIGEN/radios.json.example"  "$DESTINO/radios.json.example"
 for opcional in README.md ejemplo_respuesta.json; do
   if [[ -f "$ORIGEN/$opcional" ]]; then
@@ -111,5 +113,5 @@ echo "  systemctl restart $SERVICIO         # reiniciar tras tocar radios.json"
 echo "  nano $DESTINO/radios.json           # añadir o cambiar radios"
 echo
 echo "Prueba rapida de lectura de los radios (sin tocar el servicio):"
-echo "  sudo -u $USUARIO python3 $DESTINO/proxy.py --once"
+echo "  sudo -u $USUARIO python3 $DESTINO/$APP --once"
 echo
