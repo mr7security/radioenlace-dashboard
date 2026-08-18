@@ -19,7 +19,7 @@
       "password": "PON_AQUI_LA_CLAVE"
     },
     {
-      "nombre": "SEDE - VENUX",
+      "nombre": "SEDE - TESANY",
       "tipo": "mimosa",
       "host": "172.16.178.3",
       "usuario": "configure",
