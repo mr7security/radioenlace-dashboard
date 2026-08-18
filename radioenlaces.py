@@ -953,6 +953,22 @@ def crear_handler(monitor):
                     self._responder(404, b"Falta radioenlaces.html", "text/plain; charset=utf-8")
                 return
 
+            if ruta == "/logo":
+                # Logo de la empresa: primer archivo logo.* que exista junto al app
+                for nombre in ("logo.png", "logo.svg", "logo.jpg", "logo.jpeg", "logo.gif"):
+                    ruta_logo = os.path.join(BASE_DIR, nombre)
+                    if os.path.exists(ruta_logo):
+                        tipos = {
+                            ".png": "image/png", ".svg": "image/svg+xml",
+                            ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
+                        }
+                        ext = os.path.splitext(nombre)[1].lower()
+                        with open(ruta_logo, "rb") as fh:
+                            self._responder(200, fh.read(), tipos.get(ext, "image/png"))
+                        return
+                self._responder(404, b"sin logo", "text/plain; charset=utf-8")
+                return
+
             if ruta == "/api/estado":
                 self._responder(200, json_seguro(monitor.instantanea()))
                 return
