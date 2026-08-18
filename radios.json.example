@@ -2,25 +2,52 @@
   "puerto": 8080,
   "intervalo_segundos": 15,
   "dias_historico": 30,
-  "_ayuda": "usuario suele ser 'configure' en los Mimosa. Deja password vacio solo si el radio no exige login. Este archivo (renombrado a radios.json) NO se sube al repositorio.",
+  "_ayuda": "tipo: 'mimosa' (login web, usuario+password) o 'ceragon' (SNMP v2c, community). Renombra este archivo a radios.json; NO se sube al repositorio.",
   "radios": [
     {
       "nombre": "SEDE - AZULMED",
+      "tipo": "mimosa",
       "host": "172.16.177.4",
       "usuario": "configure",
       "password": "PON_AQUI_LA_CLAVE"
     },
     {
       "nombre": "CENUSA - VENUX",
+      "tipo": "mimosa",
       "host": "172.16.172.4",
       "usuario": "configure",
       "password": "PON_AQUI_LA_CLAVE"
     },
     {
       "nombre": "SEDE - VENUX",
+      "tipo": "mimosa",
       "host": "172.16.178.3",
       "usuario": "configure",
       "password": "PON_AQUI_LA_CLAVE"
+    },
+    {
+      "nombre": "CERAGON STN-VIT",
+      "tipo": "ceragon",
+      "host": "172.16.166.3",
+      "community": "public"
+    },
+    {
+      "nombre": "CERAGON STN-TESANY",
+      "tipo": "ceragon",
+      "host": "172.16.170.11",
+      "community": "public"
+    },
+    {
+      "nombre": "CERAGON STN-CL1",
+      "tipo": "ceragon",
+      "host": "172.16.171.11",
+      "community": "public"
+    },
+    {
+      "nombre": "CERAGON STN-SEDE",
+      "tipo": "ceragon",
+      "host": "172.16.176.3",
+      "community": "public"
     }
   ]
 }

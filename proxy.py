@@ -24,8 +24,10 @@ import json
 import math
 import os
 import re
+import shutil
 import sqlite3
 import ssl
+import subprocess
 import threading
 import time
 import urllib.error
@@ -168,6 +170,136 @@ class ClienteRadio:
                 "El radio no devolvio datos (revisa usuario/password en radios.json)"
             )
         return obj
+
+
+# ---------------------------------------------------------------------------
+# Cliente Ceragon (SNMP)
+# ---------------------------------------------------------------------------
+#
+# Los Ceragon (FibeAir IP-50/IP-20) no dan JSON: se leen por SNMP v2c, que
+# tienen habilitado. La telemetria de radio vive en la MIB propietaria 2281,
+# indexada por "carrier" (cada equipo tiene 1 o 2 portadoras). Los OID de
+# abajo estan confirmados contra un IP-50C real; si algun modelo difiere, se
+# ajustan aqui sin tocar el resto del codigo.
+
+CERAGON_BASE = "1.3.6.1.4.1.2281.10"
+
+# Columna cuyos VALORES son los indices de portadora (p.ej. 268451905/906)
+CERAGON_COL_INDICES = CERAGON_BASE + ".5.1.1.1"
+
+# Columnas por portadora: se consultan como <columna>.<indice>
+CERAGON_COLUMNAS = {
+    "rsl": CERAGON_BASE + ".5.1.1.2",        # nivel de senal recibida (dBm)
+    "tsl": CERAGON_BASE + ".5.1.1.3",        # potencia transmitida (dBm)
+    "temp": CERAGON_BASE + ".5.1.1.5",       # temperatura de la radio (C, string)
+    "serie": CERAGON_BASE + ".5.1.1.13",     # numero de serie
+    "mse": CERAGON_BASE + ".7.1.1.2",        # MSE (calidad); viene x100 en dB
+    "freq_rx": CERAGON_BASE + ".7.3.1.1.6",  # frecuencia Rx (kHz)
+    "freq_tx": CERAGON_BASE + ".7.3.1.1.7",  # frecuencia Tx (kHz)
+    "ip_remota": CERAGON_BASE + ".7.3.1.1.3",  # IP del extremo remoto
+    "modulacion": CERAGON_BASE + ".7.4.1.1.6",  # perfil ACM (p.ej. 4096)
+}
+
+# OID de sistema (una sola vez, sin indice de portadora)
+CERAGON_SISTEMA = {
+    "sysDescr": "1.3.6.1.2.1.1.1.0",
+    "sysName": "1.3.6.1.2.1.1.5.0",
+    "sysUptime": "1.3.6.1.2.1.1.3.0",   # centisegundos
+    "modelo": CERAGON_BASE + ".1.2.3.0",
+}
+
+_SNMP_DISPONIBLE = None
+
+
+def snmp_disponible():
+    global _SNMP_DISPONIBLE
+    if _SNMP_DISPONIBLE is None:
+        _SNMP_DISPONIBLE = bool(shutil.which("snmpget") and shutil.which("snmpbulkwalk"))
+    return _SNMP_DISPONIBLE
+
+
+class ClienteCeragon:
+    """Lee un Ceragon por SNMP v2c usando las utilidades del sistema."""
+
+    def __init__(self, host, community="public", timeout=6):
+        self.host = host
+        self.community = community or "public"
+        self.timeout = timeout
+
+    def _correr(self, binario, oids):
+        if not snmp_disponible():
+            raise RuntimeError(
+                "faltan las utilidades SNMP en el servidor (instala: apt-get install snmp)"
+            )
+        cmd = [
+            binario, "-v2c", "-c", self.community,
+            "-t", str(self.timeout), "-r", "1", "-On", "-Ot", "-Oq",
+            self.host,
+        ] + list(oids)
+        try:
+            salida = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=self.timeout * 2 + 4
+            )
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("SNMP sin respuesta (timeout)")
+        if salida.returncode != 0 and not salida.stdout.strip():
+            err = (salida.stderr or "").strip().splitlines()
+            raise RuntimeError("SNMP error: " + (err[0] if err else "desconocido"))
+        return salida.stdout
+
+    def _get(self, oids):
+        """snmpget de varios OID. Devuelve {oid: valor}."""
+        # -Oq da 'OID valor' (sin '= TIPO:'), mas facil de partir
+        salida = self._correr("snmpget", oids)
+        res = {}
+        for linea in salida.splitlines():
+            linea = linea.strip()
+            if not linea:
+                continue
+            partes = linea.split(None, 1)
+            if len(partes) == 2:
+                res[partes[0].lstrip(".")] = partes[1].strip().strip('"')
+        return res
+
+    def _indices(self):
+        """Lista de indices de portadora leyendo la columna de indices."""
+        salida = self._correr("snmpbulkwalk", [CERAGON_COL_INDICES])
+        indices = []
+        for linea in salida.splitlines():
+            partes = linea.strip().split(None, 1)
+            if len(partes) == 2:
+                # el valor ES el indice de portadora
+                v = partes[1].strip()
+                if v.isdigit():
+                    indices.append(v)
+        return indices
+
+    def leer(self):
+        indices = self._indices()
+        if not indices:
+            raise RuntimeError("no se encontraron portadoras (SNMP vacio o community erronea)")
+
+        # Pedimos todas las columnas de todas las portadoras en un solo snmpget
+        oids = list(CERAGON_SISTEMA.values())
+        etiquetas = {}  # oid -> (clave, indice)  para reconstruir
+        for clave, col in CERAGON_COLUMNAS.items():
+            for idx in indices:
+                oid = "%s.%s" % (col, idx)
+                oids.append(oid)
+                etiquetas[oid] = (clave, idx)
+        valores = self._get(oids)
+
+        portadoras = {idx: {} for idx in indices}
+        for oid, val in valores.items():
+            if oid in etiquetas:
+                clave, idx = etiquetas[oid]
+                portadoras[idx][clave] = val
+
+        sistema = {}
+        for clave, oid in CERAGON_SISTEMA.items():
+            sistema[clave] = valores.get(oid.lstrip("."))
+
+        return {"indices": indices, "portadoras": portadoras, "sistema": sistema}
 
 
 # ---------------------------------------------------------------------------
@@ -390,6 +522,128 @@ def parsear_radio(nombre, host, crudo):
     }
 
 
+def etiqueta_modulacion(valor):
+    """El perfil ACM de Ceragon suele ser el orden QAM (4096, 2048, 1024...).
+    Si es una potencia de 2 razonable lo mostramos como 'N QAM'; si no, crudo.
+    Pendiente de confirmar contra la GUI de un Ceragon."""
+    n = _i(valor)
+    if n is None:
+        return None
+    if n in (2, 4):
+        return "QPSK" if n == 4 else "BPSK"
+    if 8 <= n <= 8192 and (n & (n - 1)) == 0:  # potencia de 2
+        return "%d QAM" % n
+    return "perfil %d" % n
+
+
+def parsear_ceragon(nombre, host, datos):
+    """Convierte la lectura SNMP de un Ceragon al mismo formato que los Mimosa.
+
+    Un Ceragon tiene 1 o 2 portadoras; las tratamos como 'cadenas' para que el
+    dashboard las pinte igual que las 4 cadenas MIMO de los Mimosa.
+    """
+    indices = datos.get("indices", [])
+    portadoras = datos.get("portadoras", {})
+    sistema = datos.get("sistema", {})
+
+    rsl, mse, tsl, temps = [], [], [], []
+    ip_remota = None
+    freq_tx = freq_rx = None
+    modulacion_raw = None
+    serie = None
+    for idx in indices:
+        p = portadoras.get(idx, {})
+        rsl.append(_f(p.get("rsl")))
+        mse.append(_f(p.get("mse")))          # viene x100
+        tsl.append(_f(p.get("tsl")))
+        temps.append(_f(p.get("temp")))
+        ip_remota = ip_remota or p.get("ip_remota")
+        freq_tx = freq_tx or _f(p.get("freq_tx"))
+        freq_rx = freq_rx or _f(p.get("freq_rx"))
+        modulacion_raw = modulacion_raw or p.get("modulacion")
+        serie = serie or p.get("serie")
+
+    # MSE llega en centesimas de dB (-4303 -> -43.03)
+    mse_db = [round(x / 100.0, 1) if x is not None else None for x in mse]
+
+    rsl_medio = _media(rsl)
+    mse_medio = _media(mse_db)
+    mse_peor = max([x for x in mse_db if x is not None], default=None)
+
+    # uptime en centisegundos -> segundos
+    uptime = _f(sistema.get("sysUptime"))
+    if uptime is not None:
+        uptime = uptime / 100.0
+
+    conectado = any(x is not None and x > -99 for x in rsl)
+    temp_local = _media(temps)
+
+    return {
+        "nombre": nombre,
+        "host": host,
+        "ts": int(time.time()),
+        "tipo": "ceragon",
+        "conectado": conectado,
+        "enlace": nombre,
+        "enlace_equipo": sistema.get("sysName") or "",
+        "disponibilidad": None,
+        "uptime_s": uptime,
+        "distancia_m": None,
+        "rumbo": None,
+        # RSL por portadora (tratado como 'cadenas' para el dashboard)
+        "rssi_combinado": rsl_medio,
+        "rssi_cadena_media": _redondear(rsl_medio),
+        "rssi_cadenas": rsl,
+        # MSE como equivalente al EVM (ambos negativos, mas bajo = mejor)
+        "evm_cadenas": mse_db,
+        "evm_medio": _redondear(mse_medio),
+        "evm_peor": mse_peor,
+        "ruido1": None,
+        "ruido2": None,
+        "ruido_medio": None,
+        "snr": None,   # Ceragon no expone ruido/SNR por SNMP; usamos MSE
+        "tx_power": _media(tsl),
+        "tx_power_cadenas": tsl,
+        "freq1": _i(freq_tx / 1000.0) if freq_tx else None,   # kHz -> MHz
+        "freq2": _i(freq_rx / 1000.0) if freq_rx else None,
+        "ancho_canal": None,
+        "banda": None,
+        "modulacion": etiqueta_modulacion(modulacion_raw),
+        "remoto_rf": {},
+        "tx_mcs": None, "rx_mcs": None, "tx_streams": None, "rx_streams": None,
+        "tx_phy_mbps": None, "rx_phy_mbps": None,
+        "per_link": None, "per_phy": None,
+        "reintentos_tx": None, "fallos_tx": None, "crc_errores": None,
+        "gps": {},
+        "local": {
+            "nombre": sistema.get("sysName") or nombre,
+            "ip": host,
+            "modelo": sistema.get("modelo"),
+            "firmware": None,
+            "modo": sistema.get("sysDescr"),
+            "temperatura": _redondear(temp_local),
+            "ethernet": None,
+            "interfaz_activa": None,
+            "eth_degradada": False,
+            "ultimo_reboot": None,
+            "motivo_reboot": None,
+            "serie": serie,
+        },
+        "remoto": {
+            "nombre": None,
+            "ip": ip_remota,
+            "modelo": sistema.get("modelo"),
+            "firmware": None,
+            "modo": None,
+            "temperatura": None,
+            "ethernet": None,
+            "interfaz_activa": None,
+            "ultimo_reboot": None,
+            "serie": None,
+        },
+    }
+
+
 def evaluar_estado(m):
     """Semaforo a partir de las metricas de RF. Umbrales referidos a la senal
     POR CADENA, que es la escala habitual en enlaces punto a punto."""
@@ -571,9 +825,15 @@ class Monitor:
         self.estado = {}
         self.lock = threading.Lock()
         for r in cfg["radios"]:
-            self.clientes[r["nombre"]] = ClienteRadio(
-                r["host"], r.get("usuario", ""), r.get("password", "")
-            )
+            tipo = (r.get("tipo") or "mimosa").lower()
+            if tipo == "ceragon":
+                self.clientes[r["nombre"]] = ClienteCeragon(
+                    r["host"], r.get("community", "public")
+                )
+            else:
+                self.clientes[r["nombre"]] = ClienteRadio(
+                    r["host"], r.get("usuario", ""), r.get("password", "")
+                )
 
     def nombres(self):
         return [r["nombre"] for r in self.cfg["radios"]]
@@ -581,9 +841,13 @@ class Monitor:
     def sondear_uno(self, r):
         nombre = r["nombre"]
         cliente = self.clientes[nombre]
+        tipo = (r.get("tipo") or "mimosa").lower()
         try:
             crudo = cliente.leer()
-            m = parsear_radio(nombre, r["host"], crudo)
+            if tipo == "ceragon":
+                m = parsear_ceragon(nombre, r["host"], crudo)
+            else:
+                m = parsear_radio(nombre, r["host"], crudo)
             m["nivel"], m["avisos"] = evaluar_estado(m)
             m["error"] = None
             self.historico.guardar(m)
