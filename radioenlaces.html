@@ -72,6 +72,15 @@
   .chartblock{margin-bottom:6px}
   .chartblock .label{margin-bottom:2px}
   canvas.chart{width:100%; height:58px; display:block}
+
+  /* ---------- detalle completo (solo vista normal) ---------- */
+  .detalle{margin-top:10px}
+  .detalle h4{font-size:.66rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin:8px 0 3px}
+  .detalle table{width:100%; border-collapse:collapse; font-size:.76rem}
+  .detalle td{padding:3px 0; border-bottom:1px solid #24334a; vertical-align:top; font-variant-numeric:tabular-nums}
+  .detalle td:first-child{color:var(--muted); width:42%; font-variant-numeric:normal}
+  .detalle th{text-align:left; color:#64748b; font-size:.62rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; padding:0 0 3px}
+  .detalle tr:last-child td{border-bottom:none}
   .err{color:var(--muted); font-size:.8rem; line-height:1.4}
   .card > .err{flex:1; display:flex; flex-direction:column; align-items:center;
                justify-content:center; text-align:center; gap:4px; min-height:60px}
@@ -110,6 +119,7 @@
   body.tv .charts{min-height:0; margin-top:4px}
   body.tv .chartblock{margin-bottom:2px}
   body.tv canvas.chart{height:clamp(22px, 4.5vh, 60px)}
+  body.tv .detalle{display:none}   /* el detalle completo solo en vista normal */
 
   /* ===== Cartel de SIN CONEXIÓN a pantalla completa (solo modo TV) ===== */
   #offline-overlay{position:fixed; inset:0; z-index:9999; display:none;
@@ -170,6 +180,69 @@ let audioCtx = null;
 
 const $ = id => document.getElementById(id);
 const n = (v,d=1) => (v===null||v===undefined||isNaN(v)) ? "--" : Number(v).toFixed(d);
+const num = v => (v===null||v===undefined) ? "--" : v;
+function uptimeTexto(seg){
+  if(seg===null||seg===undefined||isNaN(seg)) return "--";
+  seg = Math.floor(seg);
+  const d = Math.floor(seg/86400), h = Math.floor(seg%86400/3600), m = Math.floor(seg%3600/60);
+  return d>0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m`;
+}
+const listaVals = a => (a||[]).filter(x=>x!=null).map(x=>n(x)).join(" / ") || "--";
+const primerReboot = s => String(s||"--").split(" (")[0];
+
+/* Bloque de detalle completo (solo vista normal; oculto en TV) */
+function detalleHTML(r){
+  const loc = r.local||{}, rem = r.remoto||{}, rf = r.remoto_rf||{}, gps = r.gps||{};
+  if(r.tipo === "ceragon"){
+    return `<div class="detalle">
+      <h4>Equipo</h4>
+      <table>
+        <tr><td>Modelo</td><td>${esc(loc.modelo||"--")}</td></tr>
+        <tr><td>Nº de serie</td><td>${esc(loc.serie||"--")}</td></tr>
+        <tr><td>Temperatura</td><td>${n(loc.temperatura)} °C</td></tr>
+        <tr><td>Descripción</td><td>${esc(loc.modo||"--")}</td></tr>
+        <tr><td>IP extremo remoto</td><td>${esc(rem.ip||"--")}</td></tr>
+        <tr><td>Uptime</td><td>${uptimeTexto(r.uptime_s)}</td></tr>
+      </table>
+      <h4>Radio</h4>
+      <table>
+        <tr><td>RSL por portadora</td><td>${listaVals(r.rssi_cadenas)} dBm</td></tr>
+        <tr><td>MSE por portadora</td><td>${listaVals(r.evm_cadenas)} dB</td></tr>
+        <tr><td>Modulación (ACM)</td><td>${esc(r.modulacion||"--")}</td></tr>
+        <tr><td>Potencia Tx</td><td>${n(r.tx_power)} dBm</td></tr>
+        <tr><td>Frecuencia Tx / Rx</td><td>${num(r.freq1)} / ${num(r.freq2)} MHz</td></tr>
+      </table>
+    </div>`;
+  }
+  // Mimosa
+  return `<div class="detalle">
+    <h4>Equipos</h4>
+    <table>
+      <tr><th></th><th>Local</th><th>Remoto</th></tr>
+      <tr><td>Equipo</td><td>${esc(loc.nombre||"--")}</td><td>${esc(rem.nombre||"--")}</td></tr>
+      <tr><td>Modo</td><td>${esc(loc.modo||"--")}</td><td>${esc(rem.modo||"--")}</td></tr>
+      <tr><td>Temperatura</td><td>${n(loc.temperatura)} °C</td><td>${n(rem.temperatura)} °C</td></tr>
+      <tr><td>Ethernet</td><td>${esc(loc.ethernet||"--")}</td><td>${esc(rem.ethernet||"--")}</td></tr>
+      <tr><td>Firmware</td><td>${esc(loc.firmware||"--")}</td><td>${esc(rem.firmware||"--")}</td></tr>
+      <tr><td>Últ. reinicio</td><td>${esc(primerReboot(loc.ultimo_reboot))}</td><td>${esc(primerReboot(rem.ultimo_reboot))}</td></tr>
+    </table>
+    <h4>Radio</h4>
+    <table>
+      <tr><td>RSSI por cadena</td><td colspan="2">${listaVals(r.rssi_cadenas)} dBm (comb. ${n(r.rssi_combinado)})</td></tr>
+      <tr><td>EVM por cadena</td><td colspan="2">${listaVals(r.evm_cadenas)} dB</td></tr>
+      <tr><td>SNR / ruido</td><td colspan="2">${n(r.snr)} dB · ruido ${n(r.ruido1)} / ${n(r.ruido2)} dBm</td></tr>
+      <tr><td>Modulación</td><td colspan="2">MCS ${num(r.tx_mcs)}/${num(r.rx_mcs)} · ${num(r.tx_streams)}x${num(r.rx_streams)} streams</td></tr>
+      <tr><td>PHY Tx / Rx</td><td colspan="2">${n(r.tx_phy_mbps,0)} / ${n(r.rx_phy_mbps,0)} Mbps · PER ${n(r.per_link)} %</td></tr>
+      <tr><td>Potencia Tx</td><td colspan="2">${n(r.tx_power)} dBm · remoto ${n(rf.tx_power,0)} dBm${rf.tpc_backoff!=null?` (backoff ${n(rf.tpc_backoff,0)} dB)`:""}</td></tr>
+      <tr><td>Extremo remoto</td><td colspan="2">EVM ${n(rf.evm)} dB · RSSI ${n(rf.rssi_medio)} dBm · PER ${n(rf.per,2)} %</td></tr>
+      <tr><td>Reintentos / fallos Tx</td><td colspan="2">${num(r.reintentos_tx)} / ${num(r.fallos_tx)} · CRC ${num(r.crc_errores)}</td></tr>
+      <tr><td>GPS (TDMA)</td><td colspan="2">${num(gps.satelites)} sat · SNR ${n(gps.snr)} · prec. ${n(gps.precision,2)}</td></tr>
+      <tr><td>Frecuencias</td><td colspan="2">${num(r.freq1)} / ${num(r.freq2)} MHz · ${esc(r.banda||"")} ${esc(r.ancho_canal||"")}</td></tr>
+      <tr><td>Distancia / rumbo</td><td colspan="2">${n(r.distancia_m,0)} m · ${n(r.rumbo,0)}°</td></tr>
+      <tr><td>Disponibilidad</td><td colspan="2">${n(r.disponibilidad,3)} % · uptime ${uptimeTexto(r.uptime_s)}</td></tr>
+    </table>
+  </div>`;
+}
 
 /* ---------- alertas ---------- */
 function beep(){
@@ -339,6 +412,7 @@ function render(data){
               <div class="sub">${esc(extra)}</div>
             </div>
           </div>
+          ${detalleHTML(r)}
           <div class="charts">
             <div class="chartblock" data-type="sig">
               <div class="label">Señal — histórico</div>
