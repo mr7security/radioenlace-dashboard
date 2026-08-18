@@ -430,9 +430,13 @@ function render(data){
           </div>`;
       }
 
+      // En las tarjetas Ceragon quitamos el prefijo "CERAGON " del titulo
+      // (la seccion ya lo indica); no se toca el nombre real del radio.
+      let titulo = r.enlace || r.nombre || "";
+      if(r.tipo === "ceragon") titulo = titulo.replace(/^\s*CERAGON\s+/i, "");
       cardsHtml += `<div class="card ${info.card}">
           <div class="card-h">
-            <h2>${esc(r.enlace || r.nombre)}</h2>
+            <h2>${esc(titulo)}</h2>
             <span class="tech">${esc((r.local&&r.local.modelo)||"")}</span>
             <span class="status ${info.cls}">${info.txt}</span>
           </div>
