@@ -2,52 +2,22 @@
   "puerto": 8080,
   "intervalo_segundos": 10,
   "dias_historico": 30,
-  "_ayuda": "tipo: 'mimosa' (login web, usuario+password) o 'ceragon' (SNMP v2c, community). Renombra este archivo a radios.json; NO se sube al repositorio.",
+  "_ayuda": "Mimosa: login web (usuario+password). Ceragon: SNMP (community). Los Ceragon van por pares (grupo = enlace, lado = extremo). Renombra a radios.json; NO se sube al repositorio.",
   "radios": [
-    {
-      "nombre": "SEDE - AZULMED",
-      "tipo": "mimosa",
-      "host": "172.16.177.4",
-      "usuario": "configure",
-      "password": "PON_AQUI_LA_CLAVE"
-    },
-    {
-      "nombre": "CENUSA - VENUX",
-      "tipo": "mimosa",
-      "host": "172.16.172.4",
-      "usuario": "configure",
-      "password": "PON_AQUI_LA_CLAVE"
-    },
-    {
-      "nombre": "SEDE - TESANY",
-      "tipo": "mimosa",
-      "host": "172.16.178.3",
-      "usuario": "configure",
-      "password": "PON_AQUI_LA_CLAVE"
-    },
-    {
-      "nombre": "CERAGON STN-VIT",
-      "tipo": "ceragon",
-      "host": "172.16.166.3",
-      "community": "public"
-    },
-    {
-      "nombre": "CERAGON STN-TESANY",
-      "tipo": "ceragon",
-      "host": "172.16.170.11",
-      "community": "public"
-    },
-    {
-      "nombre": "CERAGON STN-CL1",
-      "tipo": "ceragon",
-      "host": "172.16.171.11",
-      "community": "public"
-    },
-    {
-      "nombre": "CERAGON STN-SEDE",
-      "tipo": "ceragon",
-      "host": "172.16.176.3",
-      "community": "public"
-    }
+    { "nombre": "SEDE - AZULMED", "tipo": "mimosa",  "host": "172.16.177.4", "usuario": "configure", "password": "PON_AQUI_LA_CLAVE" },
+    { "nombre": "CENUSA - VENUX", "tipo": "mimosa",  "host": "172.16.172.4", "usuario": "configure", "password": "PON_AQUI_LA_CLAVE" },
+    { "nombre": "SEDE - TESANY",  "tipo": "mimosa",  "host": "172.16.178.3", "usuario": "configure", "password": "PON_AQUI_LA_CLAVE" },
+
+    { "nombre": "STN-VIT/STN",    "tipo": "ceragon", "host": "172.16.166.3",  "community": "public", "grupo": "STN-VIT",    "lado": "STN" },
+    { "nombre": "STN-VIT/VIT",    "tipo": "ceragon", "host": "172.16.166.4",  "community": "public", "grupo": "STN-VIT",    "lado": "VIT" },
+
+    { "nombre": "STN-TESANY/STN", "tipo": "ceragon", "host": "172.16.170.11", "community": "public", "grupo": "STN-TESANY", "lado": "STN" },
+    { "nombre": "STN-TESANY/TES", "tipo": "ceragon", "host": "172.16.170.12", "community": "public", "grupo": "STN-TESANY", "lado": "TESANY" },
+
+    { "nombre": "STN-CL1/STN",    "tipo": "ceragon", "host": "172.16.171.11", "community": "public", "grupo": "STN-CL1",    "lado": "STN" },
+    { "nombre": "STN-CL1/CL1",    "tipo": "ceragon", "host": "172.16.171.12", "community": "public", "grupo": "STN-CL1",    "lado": "CL1" },
+
+    { "nombre": "STN-SEDE/STN",   "tipo": "ceragon", "host": "172.16.176.3",  "community": "public", "grupo": "STN-SEDE",   "lado": "STN" },
+    { "nombre": "STN-SEDE/SEDE",  "tipo": "ceragon", "host": "172.16.176.4",  "community": "public", "grupo": "STN-SEDE",   "lado": "SEDE" }
   ]
 }

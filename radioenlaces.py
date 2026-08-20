@@ -916,6 +916,9 @@ class Monitor:
                 "evm_cadenas": [],
             }
             log("%s (%s): %s" % (nombre, r["host"], exc))
+        # Etiquetas de agrupacion (para tarjetas de enlace con dos lados)
+        m["grupo"] = r.get("grupo") or nombre
+        m["lado"] = r.get("lado") or ""
         with self.lock:
             self.estado[nombre] = m
 

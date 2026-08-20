@@ -86,6 +86,20 @@
   body.tv .dual .dcell .t{font-size:clamp(.55rem,.8vw,1.15rem)}
   body.tv .dual .v2{font-size:clamp(1.8rem,3.4vw,6rem)}
   body.tv .picos{font-size:clamp(.6rem,.9vw,1.3rem); margin-top:clamp(4px,1vh,14px)}
+  /* tarjeta de enlace Ceragon con dos lados */
+  .doslados{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:620px){.doslados{grid-template-columns:1fr}}
+  .lado{display:flex; flex-direction:column; gap:8px; min-width:0}
+  .lado-h{display:flex; align-items:center; justify-content:space-between; gap:8px;
+          padding-bottom:5px; border-bottom:1px solid #24334a}
+  .lado-h .lname{font-size:.85rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em}
+  .lado .err{padding:20px 8px; text-align:center}
+  .charts-row{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px}
+  body.tv .doslados{gap:8px; flex:1; min-height:0}
+  body.tv .lado{gap:5px; min-height:0}
+  body.tv .lado-h{padding-bottom:2px}
+  body.tv .lado-h .lname{font-size:clamp(.85rem,1.25vw,2rem)}
+  body.tv .charts-row{display:none}   /* en TV, los enlaces de 2 lados van sin grafica para que quepan */
   .bar{position:relative; height:6px; background:#0b1120; border-radius:3px; margin:7px 0 3px}
   .bar .fill{position:absolute; top:0; bottom:0; border-radius:3px}
   .bar .dot{position:absolute; top:-3px; width:12px; height:12px; border-radius:50%; border:2px solid var(--bg); transform:translateX(-50%)}
@@ -383,6 +397,122 @@ const NIVEL_INFO = {
   caido:   {cls:"off",   txt:"✖ CAÍDO",      card:"offline"},
 };
 
+/* ---------- tarjeta Ceragon con dos lados ---------- */
+const ORDEN_NIVEL = {ok:0, aviso:1, critico:2, caido:3};
+
+// Contenido de un extremo (lado) de un enlace Ceragon
+function cuerpoLado(r){
+  const nivel = r.nivel || "caido";
+  const info = NIVEL_INFO[nivel] || NIVEL_INFO.caido;
+  const lado = r.lado || r.nombre || "";
+  const cab = `<div class="lado-h"><span class="lname">${esc(lado)}</span>
+      <span class="status ${info.cls}">${info.txt}</span></div>`;
+  if(nivel === "caido"){
+    return `<div class="lado">${cab}
+      <div class="err">Sin conexión: ${esc((r.avisos&&r.avisos[0]) || r.error || "no responde")}</div></div>`;
+  }
+  const senal = r.rssi_cadena_media;
+  const cs = colorSenal(senal);
+  const barCol = cs==="alarm"?"var(--alarm)":cs==="warn"?"var(--warn)":"var(--ok)";
+  const pct = pctSenal(senal);
+  const cadenas = (r.rssi_cadenas||[]).filter(x=>x!=null).map(x=>n(x)).join(" / ");
+  const pm = r.pm||{};
+  const rr = v => (v===null||v===undefined)?"--":Math.round(v);
+  return `<div class="lado">${cab}
+    <div class="sensor" data-type="sig">
+      <div class="label">📶 RSL señal</div>
+      <div class="value v-${cs}">${n(senal)}<small> dBm</small></div>
+      <div class="bar"><div class="fill" style="left:0;width:${pct}%;background:${barCol}"></div>
+        <div class="dot" style="left:${pct}%;background:${barCol}"></div></div>
+      <div class="rangetxt"><span>-90</span><span>-30 dBm</span></div>
+      <div class="sub">${cadenas?`portadoras: ${cadenas} dBm`:""}</div>
+    </div>
+    <div class="sensor" data-type="qual">
+      <div class="label">⚡ Capacidad / Throughput</div>
+      <div class="dual">
+        <div class="dcell"><span class="t">Cap. media</span>
+          <div class="v2" style="color:var(--accent)">${rr(pm.cap_media)}<small>Mbps</small></div></div>
+        <div class="dcell"><span class="t">Tput medio</span>
+          <div class="v2">${rr(pm.tp_media)}<small>Mbps</small></div></div>
+      </div>
+      <div class="picos">Cap. pico <b>${rr(pm.cap_pico)}</b> · Tput pico <b>${rr(pm.tp_pico)}</b> <i>Mbps · PM 15 min</i></div>
+    </div>
+  </div>`;
+}
+
+// Tarjeta de un enlace Ceragon (grupo) con sus dos extremos
+function tarjetaEnlace(grupo, ends, color){
+  let peor = "ok";
+  ends.forEach(r=>{ const nv=r.nivel||"caido"; if(ORDEN_NIVEL[nv]>ORDEN_NIVEL[peor]) peor=nv; });
+  const info = NIVEL_INFO[peor];
+  const modelo = (ends.find(r=>r.local&&r.local.modelo)||{}).local?.modelo || "";
+  const charts = ends.map(r=>`<div class="chartblock" data-type="sig">
+      <div class="label">${esc(r.lado||"")} — RSL histórico</div>
+      <canvas class="chart" data-key="${esc(r.nombre)}|sig" data-color="${color}"></canvas>
+    </div>`).join("");
+  return `<div class="card ${info.card}">
+      <div class="card-h">
+        <h2>${esc(grupo)}</h2>
+        <span class="tech">${esc(modelo)}</span>
+        <span class="status ${info.cls}">${info.txt}</span>
+      </div>
+      <div class="doslados">${ends.map(cuerpoLado).join("")}</div>
+      <div class="charts charts-row">${charts}</div>
+    </div>`;
+}
+
+// Tarjeta de un radio Mimosa (un enlace = una tarjeta)
+function tarjetaMimosa(r, color){
+  const nivel = r.nivel || "caido";
+  const info = NIVEL_INFO[nivel] || NIVEL_INFO.caido;
+  let inner;
+  if(nivel==="caido"){
+    inner = `<div class="err">Sin conexión: ${esc((r.avisos&&r.avisos[0]) || r.error || "no responde")}</div>`;
+  }else{
+    const senal = r.rssi_cadena_media;
+    const cs = colorSenal(senal);
+    const barCol = cs==="alarm"?"var(--alarm)":cs==="warn"?"var(--warn)":"var(--ok)";
+    const pct = pctSenal(senal);
+    const cadenas = (r.rssi_cadenas||[]).filter(x=>x!=null).map(x=>n(x)).join(" / ");
+    const cc = colorCalidad(r.evm_medio);
+    const subQ = `${r.tx_mcs!=null ? `MCS ${r.tx_mcs}/${r.rx_mcs}` : "--"}${r.snr!=null?` · SNR ${n(r.snr)} dB`:""}`;
+    inner = `<div class="svals">
+        <div class="sensor" data-type="sig">
+          <div class="label">📶 RSSI señal</div>
+          <div class="value v-${cs}">${n(senal)}<small> dBm</small></div>
+          <div class="bar"><div class="fill" style="left:0;width:${pct}%;background:${barCol}"></div>
+            <div class="dot" style="left:${pct}%;background:${barCol}"></div></div>
+          <div class="rangetxt"><span>-90</span><span>-30 dBm</span></div>
+          <div class="sub">${cadenas?`cadenas: ${cadenas} dBm`:""}</div>
+        </div>
+        <div class="sensor" data-type="qual">
+          <div class="label">✦ Calidad EVM</div>
+          <div class="value v-${cc}">${n(r.evm_medio)}<small> dB</small></div>
+          <div class="sub">${esc(subQ)}</div>
+        </div>
+      </div>
+      ${detalleHTML(r)}
+      <div class="charts">
+        <div class="chartblock" data-type="sig">
+          <div class="label">Señal — histórico</div>
+          <canvas class="chart" data-key="${esc(r.nombre)}|sig" data-color="${color}"></canvas>
+        </div>
+        <div class="chartblock" data-type="qual">
+          <div class="label">Calidad — histórico</div>
+          <canvas class="chart" data-key="${esc(r.nombre)}|qual" data-color="${color}"></canvas>
+        </div>
+      </div>`;
+  }
+  return `<div class="card ${info.card}">
+      <div class="card-h">
+        <h2>${esc(r.enlace || r.nombre)}</h2>
+        <span class="tech">${esc((r.local&&r.local.modelo)||"")}</span>
+        <span class="status ${info.cls}">${info.txt}</span>
+      </div>
+      ${inner}
+    </div>`;
+}
+
 /* ---------- render ---------- */
 function render(data){
   radiosActuales = (data.radios||[]).map(r=>r.nombre);
@@ -398,102 +528,47 @@ function render(data){
   let html = "";
   groups.forEach(g=>{
     const color = TECH_COLORS[g.tech] || "#38bdf8";
+    const esCeragonSec = g.tech === "ceragon";
     let nOk=0, nWarn=0, nAlarm=0, nOff=0;
     let cardsHtml = "";
+
+    // Alertas sonoras: por cada radio (cada extremo), al entrar en aviso/critico/caido
     g.radios.forEach(r=>{
       const nivel = r.nivel || "caido";
       const info = NIVEL_INFO[nivel] || NIVEL_INFO.caido;
-      if(nivel==="ok") nOk++;
-      else if(nivel==="aviso") nWarn++;
-      else if(nivel==="critico") nAlarm++;
-      else nOff++;
-
-      // alerta sonora al entrar en aviso/critico/caido
       const malo = nivel==="critico" || nivel==="caido" || nivel==="aviso";
       if(malo && !prevBad[r.nombre]){
+        const et = esCeragonSec ? `${r.grupo||""} ${r.lado||""}`.trim() : r.nombre;
         beep();
-        notify((nivel==="caido"?"✖ ":"⚠ ") + r.nombre, (r.avisos||[]).join(" · ") || info.txt);
+        notify((nivel==="caido"?"✖ ":"⚠ ") + et, (r.avisos||[]).join(" · ") || info.txt);
       }
       prevBad[r.nombre] = malo;
-
-      let inner;
-      if(nivel==="caido"){
-        inner = `<div class="err">Sin conexión: ${esc((r.avisos&&r.avisos[0]) || r.error || "no responde")}</div>`;
-      }else{
-        const esCeragon = r.tipo === "ceragon";
-        // --- Señal ---
-        const senal = r.rssi_cadena_media;
-        const cs = colorSenal(senal);
-        const cadenas = (r.rssi_cadenas||[]).filter(x=>x!=null).map(x=>n(x)).join(" / ");
-        const barCol = cs==="alarm"?"var(--alarm)":cs==="warn"?"var(--warn)":"var(--ok)";
-        const pct = pctSenal(senal);
-        const barSenal = (senal!=null) ? `<div class="bar">
-              <div class="fill" style="left:0;width:${pct}%;background:${barCol}"></div>
-              <div class="dot" style="left:${pct}%;background:${barCol}"></div>
-            </div>
-            <div class="rangetxt"><span>-90</span><span>-30 dBm</span></div>` : "";
-        const subSenal = cadenas ? `${esCeragon?"portadoras":"cadenas"}: ${cadenas} dBm` : "";
-
-        // --- Segundo bloque: Ceragon = Capacidad (pico) + rejilla; Mimosa = Calidad EVM ---
-        let bloqueQual;
-        if(esCeragon){
-          const pm = r.pm||{};
-          const rr = v => (v===null||v===undefined)?"--":Math.round(v);
-          bloqueQual = `<div class="sensor" data-type="qual">
-              <div class="label">⚡ Capacidad / Throughput</div>
-              <div class="dual">
-                <div class="dcell"><span class="t">Cap. media</span>
-                  <div class="v2" style="color:var(--accent)">${rr(pm.cap_media)}<small>Mbps</small></div></div>
-                <div class="dcell"><span class="t">Tput medio</span>
-                  <div class="v2">${rr(pm.tp_media)}<small>Mbps</small></div></div>
-              </div>
-              <div class="picos">Cap. pico <b>${rr(pm.cap_pico)}</b> · Tput pico <b>${rr(pm.tp_pico)}</b> <i>Mbps · PM 15 min</i></div>
-            </div>`;
-        }else{
-          const cc = colorCalidad(r.evm_medio);
-          const subQ = `${r.tx_mcs!=null ? `MCS ${r.tx_mcs}/${r.rx_mcs}` : "--"}${r.snr!=null?` · SNR ${n(r.snr)} dB`:""}`;
-          bloqueQual = `<div class="sensor" data-type="qual">
-              <div class="label">✦ Calidad EVM</div>
-              <div class="value v-${cc}">${n(r.evm_medio)}<small> dB</small></div>
-              <div class="sub">${esc(subQ)}</div>
-            </div>`;
-        }
-
-        inner = `<div class="svals">
-            <div class="sensor" data-type="sig">
-              <div class="label">📶 ${esCeragon?"RSL":"RSSI"} señal</div>
-              <div class="value v-${cs}">${n(senal)}<small> dBm</small></div>
-              ${barSenal}
-              <div class="sub">${subSenal}</div>
-            </div>
-            ${bloqueQual}
-          </div>
-          ${detalleHTML(r)}
-          <div class="charts">
-            <div class="chartblock" data-type="sig">
-              <div class="label">Señal — histórico</div>
-              <canvas class="chart" data-key="${esc(r.nombre)}|sig" data-color="${color}"></canvas>
-            </div>
-            <div class="chartblock" data-type="qual">
-              <div class="label">${esCeragon?"MSE":"Calidad"} — histórico</div>
-              <canvas class="chart" data-key="${esc(r.nombre)}|qual" data-color="${color}"></canvas>
-            </div>
-          </div>`;
-      }
-
-      // En las tarjetas Ceragon quitamos el prefijo "CERAGON " del titulo
-      // (la seccion ya lo indica); no se toca el nombre real del radio.
-      let titulo = r.enlace || r.nombre || "";
-      if(r.tipo === "ceragon") titulo = titulo.replace(/^\s*CERAGON\s+/i, "");
-      cardsHtml += `<div class="card ${info.card}">
-          <div class="card-h">
-            <h2>${esc(titulo)}</h2>
-            <span class="tech">${esc((r.local&&r.local.modelo)||"")}</span>
-            <span class="status ${info.cls}">${info.txt}</span>
-          </div>
-          ${inner}
-        </div>`;
     });
+
+    if(esCeragonSec){
+      // Ceragon: una tarjeta por enlace (grupo) con sus dos extremos
+      const enlaces = [];
+      const byGrupo = {};
+      g.radios.forEach(r=>{
+        const gr = r.grupo || r.nombre;
+        if(!byGrupo[gr]){ byGrupo[gr] = {grupo:gr, ends:[]}; enlaces.push(byGrupo[gr]); }
+        byGrupo[gr].ends.push(r);
+      });
+      enlaces.forEach(e=>{
+        let peor = "ok";
+        e.ends.forEach(r=>{ const nv=r.nivel||"caido"; if(ORDEN_NIVEL[nv]>ORDEN_NIVEL[peor]) peor=nv; });
+        if(peor==="ok") nOk++; else if(peor==="aviso") nWarn++; else if(peor==="critico") nAlarm++; else nOff++;
+        cardsHtml += tarjetaEnlace(e.grupo, e.ends, color);
+      });
+    } else {
+      // Mimosa: una tarjeta por radio
+      g.radios.forEach(r=>{
+        const nivel = r.nivel || "caido";
+        if(nivel==="ok") nOk++; else if(nivel==="aviso") nWarn++;
+        else if(nivel==="critico") nAlarm++; else nOff++;
+        cardsHtml += tarjetaMimosa(r, color);
+      });
+    }
     const pills =
       (nAlarm ? `<span class="pill alarm">⚠ ${nAlarm} crítico</span>` : "") +
       (nWarn  ? `<span class="pill warn">⚠ ${nWarn} degradado</span>` : "") +
