@@ -95,23 +95,25 @@
   .lado-h .lname{font-size:.85rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em}
   .lado .err{padding:20px 8px; text-align:center}
   .charts-row{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px}
-  body.tv .doslados{gap:8px; flex:1; min-height:0}
-  body.tv .lado{gap:4px; min-height:0; justify-content:center}
-  body.tv .lado-h{padding-bottom:2px}
-  body.tv .lado-h .lname{font-size:clamp(.8rem,1.15vw,1.8rem)}
   body.tv .charts-row{display:none}   /* en TV, los enlaces de 2 lados van sin grafica para que quepan */
-  /* Compactar cada lado en TV: sensores a su tamaño (no estirados) y fuentes que quepan */
-  body.tv .lado .sensor{flex:0 0 auto; padding:4px 6px; align-items:center; overflow:hidden}
-  body.tv .lado .label{font-size:clamp(.5rem,.7vw,1rem)}
-  body.tv .lado .value{font-size:clamp(1.2rem,1.9vw,3.2rem); line-height:1.05}
-  body.tv .lado .value small{font-size:.42em}
+  /* En TV los dos lados se APILAN (uno arriba, otro abajo): cada lado ocupa todo
+     el ancho de la tarjeta, asi los numeros se ven grandes y no se cortan. */
+  body.tv .doslados{display:flex; flex-direction:column; gap:6px; flex:1; min-height:0}
+  body.tv .lado{flex:1; min-height:0; display:flex; flex-direction:column; gap:2px; justify-content:center}
+  body.tv .lado-h{padding-bottom:2px}
+  body.tv .lado-h .lname{font-size:clamp(.85rem,1.2vw,2rem)}
+  /* dentro de cada lado: nombre arriba, luego señal y segundo bloque (a todo el ancho) */
+  body.tv .lado .sensor{flex:1 1 0; min-width:0; padding:3px 6px; overflow:hidden}
+  body.tv .lado .label{font-size:clamp(.5rem,.72vw,1.05rem)}
+  body.tv .lado .value{font-size:clamp(1.6rem,2.7vw,4.6rem); line-height:1.02}
+  body.tv .lado .value small{font-size:.4em}
   body.tv .lado .rangetxt, body.tv .lado .sub{display:none}
   body.tv .lado .bar{margin:3px 0 0}
-  body.tv .lado .dual{gap:6px}
-  body.tv .lado .dual .dcell .t{font-size:clamp(.46rem,.6vw,.85rem)}
-  body.tv .lado .dual .v2{font-size:clamp(.95rem,1.4vw,2.3rem)}
+  body.tv .lado .dual{gap:8px}
+  body.tv .lado .dual .dcell .t{font-size:clamp(.5rem,.68vw,1rem)}
+  body.tv .lado .dual .v2{font-size:clamp(1.3rem,2vw,3.4rem)}
   body.tv .lado .dual .v2 small{font-size:.4em}
-  body.tv .lado .picos{font-size:clamp(.48rem,.68vw,1rem); margin-top:3px}
+  body.tv .lado .picos{font-size:clamp(.5rem,.72vw,1.05rem); margin-top:3px}
   .bar{position:relative; height:6px; background:#0b1120; border-radius:3px; margin:7px 0 3px}
   .bar .fill{position:absolute; top:0; bottom:0; border-radius:3px}
   .bar .dot{position:absolute; top:-3px; width:12px; height:12px; border-radius:50%; border:2px solid var(--bg); transform:translateX(-50%)}
