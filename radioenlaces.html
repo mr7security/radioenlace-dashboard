@@ -49,7 +49,7 @@
   .card.offline{border-left-color:var(--off); opacity:.7}
   @keyframes blink{50%{background:#3b1f2b}}
   .card-h{display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:8px}
-  .card-h h2{font-size:1.05rem; font-weight:700; text-transform:uppercase; letter-spacing:.02em}
+  .card-h h2{font-size:1.05rem; font-weight:700; text-transform:uppercase; letter-spacing:.02em; color:var(--sc)}
   .card-h .tech{color:var(--muted); font-size:.62rem; text-transform:uppercase; letter-spacing:.06em; margin-left:auto; margin-right:8px}
   .status{font-size:.75rem; font-weight:700; white-space:nowrap}
   .status.ok{color:var(--ok)} .status.warn{color:var(--warn)} .status.alarm{color:var(--alarm)} .status.off{color:var(--off)}
@@ -509,17 +509,19 @@ function cuerpoLado(r){
   return `<div class="lado">${cab}${senalBloque}${bloque2}</div>`;
 }
 
-// Tarjeta de un enlace Ceragon (grupo) con sus dos extremos
+// Tarjeta de un enlace (grupo) con sus dos extremos
 function tarjetaEnlace(grupo, ends, color){
   let peor = "ok";
   ends.forEach(r=>{ const nv=r.nivel||"caido"; if(ORDEN_NIVEL[nv]>ORDEN_NIVEL[peor]) peor=nv; });
   const info = NIVEL_INFO[peor];
   const modelo = (ends.find(r=>r.local&&r.local.modelo)||{}).local?.modelo || "";
+  // color propio de la tarjeta si viene en la config; si no, el de la seccion
+  const col = (ends.find(r=>r.color)||{}).color || color;
   const charts = ends.map(r=>`<div class="chartblock" data-type="sig">
       <div class="label">${esc(r.lado||"")} — RSL histórico</div>
-      <canvas class="chart" data-key="${esc(r.nombre)}|sig" data-color="${color}"></canvas>
+      <canvas class="chart" data-key="${esc(r.nombre)}|sig" data-color="${col}"></canvas>
     </div>`).join("");
-  return `<div class="card ${info.card}">
+  return `<div class="card ${info.card}" style="--sc:${col}">
       <div class="card-h">
         <h2>${esc(grupo)}</h2>
         <span class="tech">${esc(modelo)}</span>

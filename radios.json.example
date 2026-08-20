@@ -13,16 +13,16 @@
     { "nombre": "SEDE-TESANY/SEDE",     "tipo": "mimosa", "host": "172.16.178.3", "usuario": "configure", "password": "PON_AQUI_LA_CLAVE", "grupo": "SEDE-TESANY", "lado": "SEDE" },
     { "nombre": "SEDE-TESANY/TESANY",   "tipo": "mimosa", "host": "172.16.178.4", "usuario": "configure", "password": "PON_AQUI_LA_CLAVE", "grupo": "SEDE-TESANY", "lado": "TESANY" },
 
-    { "nombre": "STN-VIT/STN",    "tipo": "ceragon", "host": "172.16.166.3",  "community": "public", "grupo": "STN-VIT",    "lado": "STN" },
-    { "nombre": "STN-VIT/VIT",    "tipo": "ceragon", "host": "172.16.166.4",  "community": "public", "grupo": "STN-VIT",    "lado": "VIT" },
+    { "nombre": "CENUSA-VITACER/CENUSA",  "tipo": "ceragon", "host": "172.16.166.3",  "community": "public", "grupo": "CENUSA / VITACER",      "lado": "CENUSA",  "color": "#22d3ee" },
+    { "nombre": "CENUSA-VITACER/VITACER", "tipo": "ceragon", "host": "172.16.166.4",  "community": "public", "grupo": "CENUSA / VITACER",      "lado": "VITACER", "color": "#22d3ee" },
 
-    { "nombre": "STN-TESANY/STN", "tipo": "ceragon", "host": "172.16.170.11", "community": "public", "grupo": "STN-TESANY", "lado": "STN" },
-    { "nombre": "STN-TESANY/TES", "tipo": "ceragon", "host": "172.16.170.12", "community": "public", "grupo": "STN-TESANY", "lado": "TESANY" },
+    { "nombre": "CENUSA-TESANY/CENUSA",   "tipo": "ceragon", "host": "172.16.170.11", "community": "public", "grupo": "CENUSA / TESANY",       "lado": "CENUSA",  "color": "#f472b6" },
+    { "nombre": "CENUSA-TESANY/TESANY",   "tipo": "ceragon", "host": "172.16.170.12", "community": "public", "grupo": "CENUSA / TESANY",       "lado": "TESANY",  "color": "#f472b6" },
 
-    { "nombre": "STN-CL1/STN",    "tipo": "ceragon", "host": "172.16.171.11", "community": "public", "grupo": "STN-CL1",    "lado": "STN" },
-    { "nombre": "STN-CL1/CL1",    "tipo": "ceragon", "host": "172.16.171.12", "community": "public", "grupo": "STN-CL1",    "lado": "CL1" },
+    { "nombre": "CENUSA-CL1/CENUSA",      "tipo": "ceragon", "host": "172.16.171.11", "community": "public", "grupo": "CENUSA / CL1",          "lado": "CENUSA",  "color": "#a78bfa" },
+    { "nombre": "CENUSA-CL1/CL1",         "tipo": "ceragon", "host": "172.16.171.12", "community": "public", "grupo": "CENUSA / CL1",          "lado": "CL1",     "color": "#a78bfa" },
 
-    { "nombre": "STN-SEDE/STN",   "tipo": "ceragon", "host": "172.16.176.3",  "community": "public", "grupo": "STN-SEDE",   "lado": "STN" },
-    { "nombre": "STN-SEDE/SEDE",  "tipo": "ceragon", "host": "172.16.176.4",  "community": "public", "grupo": "STN-SEDE",   "lado": "SEDE" }
+    { "nombre": "CENUSA-SEDE/CENUSA",     "tipo": "ceragon", "host": "172.16.176.3",  "community": "public", "grupo": "CENUSA / SEDE CENTRAL", "lado": "CENUSA",  "color": "#94a3b8" },
+    { "nombre": "CENUSA-SEDE/SEDE",       "tipo": "ceragon", "host": "172.16.176.4",  "community": "public", "grupo": "CENUSA / SEDE CENTRAL", "lado": "SEDE CENTRAL", "color": "#94a3b8" }
   ]
 }

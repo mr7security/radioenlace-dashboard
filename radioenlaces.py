@@ -941,6 +941,7 @@ class Monitor:
         # Etiquetas de agrupacion (para tarjetas de enlace con dos lados)
         m["grupo"] = r.get("grupo") or nombre
         m["lado"] = r.get("lado") or ""
+        m["color"] = r.get("color") or ""   # color propio de la tarjeta (opcional)
         with self.lock:
             self.estado[nombre] = m
 
