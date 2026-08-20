@@ -188,6 +188,7 @@
     <button class="btn" id="b24h" onclick="setRange(24)">24h</button>
     <button class="btn" id="bAlert" onclick="toggleAlerts()">🔔 Alertas: OFF</button>
     <button class="btn" id="bTV" onclick="toggleTV()">🖥️ Modo TV</button>
+    <button class="btn" id="bPres" onclick="togglePresentacion()">🔁 Presentación</button>
   </div>
   <div id="clock">--:--:--</div>
 </header>
@@ -206,6 +207,7 @@
 <script>
 const REFRESH_S = 10;
 const HIST_REFRESH_S = 60;
+const PRES_SECONDS = 15;   // segundos que se muestra cada tecnologia en modo presentacion
 
 // Color identificativo por tecnologia (fuera del semaforo de estado)
 const TECH_COLORS = { "mimosa":"#38bdf8", "ceragon":"#a78bfa" };
@@ -337,25 +339,58 @@ function toggleTV(){
   $("bTV").classList.toggle("active", on);
   if(on){
     document.documentElement.requestFullscreen?.().catch(()=>{});
-  }else if(document.fullscreenElement){
-    document.exitFullscreen();
+  }else{
+    if(document.fullscreenElement) document.exitFullscreen();
+    // salir de TV apaga tambien la presentacion
+    if(presentacion){ presentacion=false; $("bPres").classList.remove("active"); clearInterval(presTimer); presTimer=null; }
   }
   drawAllCharts();
-  fitTV();
+  aplicarPresentacion();
   updateOverlay();
+}
+
+/* ---------- modo presentacion (rota entre tecnologias en TV) ---------- */
+let presentacion = false, presIdx = 0, presTimer = null;
+
+// Muestra solo la seccion actual (o todas si la presentacion esta apagada)
+function aplicarPresentacion(){
+  const secs = [...document.querySelectorAll("#sites > section.site")];
+  const tv = document.body.classList.contains("tv");
+  if(presentacion && tv && secs.length){
+    presIdx = ((presIdx % secs.length) + secs.length) % secs.length;
+    secs.forEach((s,i)=> s.style.display = (i===presIdx) ? "" : "none");
+  }else{
+    secs.forEach(s=> s.style.display = "");
+  }
+  fitTV();
+}
+
+function togglePresentacion(){
+  presentacion = !presentacion;
+  $("bPres").classList.toggle("active", presentacion);
+  if(presentacion){
+    if(!document.body.classList.contains("tv")) toggleTV();  // presentacion implica modo TV
+    presIdx = 0;
+    clearInterval(presTimer);
+    presTimer = setInterval(()=>{ presIdx++; aplicarPresentacion(); }, PRES_SECONDS*1000);
+  }else{
+    clearInterval(presTimer); presTimer = null;
+  }
+  aplicarPresentacion();
 }
 
 /* Modo TV: rejilla que ocupa toda la pantalla. Secciones grandes (>=4 enlaces)
    ocupan una fila entera; el resto se reparte en columnas iguales. */
 function fitTV(){
   const s = $("sites");
-  const sites = [...s.children];
+  const todos = [...s.children];
   s.style.height = "";
   s.style.gridTemplateColumns = "";
-  sites.forEach(el => el.style.gridColumn = "");
+  todos.forEach(el => el.style.gridColumn = "");
   if(!document.body.classList.contains("tv")) return;
   const header = document.querySelector("header");
   s.style.height = (window.innerHeight - header.offsetHeight - 12) + "px";
+  const sites = todos.filter(el => el.style.display !== "none");  // solo visibles
   const nCards = el => el.querySelectorAll(".card").length;
   const isBig = el => nCards(el) >= 4;
   const smalls = sites.filter(el => !isBig(el));
@@ -588,7 +623,7 @@ function render(data){
   });
   $("sites").innerHTML = html;
   drawAllCharts();
-  fitTV();
+  aplicarPresentacion();   // reaplica la rotacion si esta activa (y llama a fitTV)
 }
 
 function esc(s){ return String(s??"").replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
