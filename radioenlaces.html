@@ -74,11 +74,13 @@
   body.tv .pm4 .cell{font-size:clamp(.6rem,.85vw,1.25rem)}
   body.tv .pm4 .cap{font-size:clamp(.5rem,.7vw,1rem)}
   /* dos valores grandes lado a lado (Cap media / Tput medio) + linea de picos */
-  .dual{display:flex; gap:14px; width:100%; margin-top:2px}
-  .dual .dcell{flex:1; min-width:0; text-align:center}
-  .dual .dcell .t{font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; display:block; margin-bottom:2px}
-  .dual .v2{font-size:1.95rem; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.05; white-space:nowrap}
-  .dual .v2 small{font-size:.46em; color:var(--muted); font-weight:500; margin-left:2px}
+  .sensor[data-type="qual"]{text-align:center}
+  .sensor[data-type="qual"] .label{text-align:center}
+  .dual{display:flex; gap:14px; width:100%; margin-top:2px; justify-content:center; align-items:flex-start}
+  .dual .dcell{flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; text-align:center}
+  .dual .dcell .t{font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px}
+  .dual .v2{font-size:1.95rem; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.05; white-space:nowrap; display:flex; align-items:baseline; justify-content:center; gap:2px}
+  .dual .v2 small{font-size:.46em; color:var(--muted); font-weight:500}
   .picos{font-size:.66rem; color:var(--muted); margin-top:8px; text-align:center; white-space:nowrap}
   .picos b{color:var(--text); font-variant-numeric:tabular-nums}
   .picos i{font-style:normal; opacity:.8}
