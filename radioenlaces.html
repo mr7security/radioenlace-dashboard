@@ -400,7 +400,7 @@ const NIVEL_INFO = {
 /* ---------- tarjeta Ceragon con dos lados ---------- */
 const ORDEN_NIVEL = {ok:0, aviso:1, critico:2, caido:3};
 
-// Contenido de un extremo (lado) de un enlace Ceragon
+// Contenido de un extremo (lado) de un enlace, para Ceragon o Mimosa
 function cuerpoLado(r){
   const nivel = r.nivel || "caido";
   const info = NIVEL_INFO[nivel] || NIVEL_INFO.caido;
@@ -411,33 +411,46 @@ function cuerpoLado(r){
     return `<div class="lado">${cab}
       <div class="err">Sin conexión: ${esc((r.avisos&&r.avisos[0]) || r.error || "no responde")}</div></div>`;
   }
+  const esCeragon = r.tipo === "ceragon";
+  // --- Señal (RSL/RSSI) ---
   const senal = r.rssi_cadena_media;
   const cs = colorSenal(senal);
   const barCol = cs==="alarm"?"var(--alarm)":cs==="warn"?"var(--warn)":"var(--ok)";
   const pct = pctSenal(senal);
   const cadenas = (r.rssi_cadenas||[]).filter(x=>x!=null).map(x=>n(x)).join(" / ");
-  const pm = r.pm||{};
-  const rr = v => (v===null||v===undefined)?"--":Math.round(v);
-  return `<div class="lado">${cab}
-    <div class="sensor" data-type="sig">
-      <div class="label">📶 RSL señal</div>
+  const senalBloque = `<div class="sensor" data-type="sig">
+      <div class="label">📶 ${esCeragon?"RSL":"RSSI"} señal</div>
       <div class="value v-${cs}">${n(senal)}<small> dBm</small></div>
       <div class="bar"><div class="fill" style="left:0;width:${pct}%;background:${barCol}"></div>
         <div class="dot" style="left:${pct}%;background:${barCol}"></div></div>
       <div class="rangetxt"><span>-90</span><span>-30 dBm</span></div>
-      <div class="sub">${cadenas?`portadoras: ${cadenas} dBm`:""}</div>
-    </div>
-    <div class="sensor" data-type="qual">
-      <div class="label">⚡ Capacidad / Throughput</div>
-      <div class="dual">
-        <div class="dcell"><span class="t">Cap. media</span>
-          <div class="v2" style="color:var(--accent)">${rr(pm.cap_media)}<small>Mbps</small></div></div>
-        <div class="dcell"><span class="t">Tput medio</span>
-          <div class="v2">${rr(pm.tp_media)}<small>Mbps</small></div></div>
-      </div>
-      <div class="picos">Cap. pico <b>${rr(pm.cap_pico)}</b> · Tput pico <b>${rr(pm.tp_pico)}</b> <i>Mbps · PM 15 min</i></div>
-    </div>
-  </div>`;
+      <div class="sub">${cadenas?`${esCeragon?"portadoras":"cadenas"}: ${cadenas} dBm`:""}</div>
+    </div>`;
+  // --- Segundo bloque: Ceragon = Capacidad/Throughput; Mimosa = Calidad EVM ---
+  let bloque2;
+  if(esCeragon){
+    const pm = r.pm||{};
+    const rr = v => (v===null||v===undefined)?"--":Math.round(v);
+    bloque2 = `<div class="sensor" data-type="qual">
+        <div class="label">⚡ Capacidad / Throughput</div>
+        <div class="dual">
+          <div class="dcell"><span class="t">Cap. media</span>
+            <div class="v2" style="color:var(--accent)">${rr(pm.cap_media)}<small>Mbps</small></div></div>
+          <div class="dcell"><span class="t">Tput medio</span>
+            <div class="v2">${rr(pm.tp_media)}<small>Mbps</small></div></div>
+        </div>
+        <div class="picos">Cap. pico <b>${rr(pm.cap_pico)}</b> · Tput pico <b>${rr(pm.tp_pico)}</b> <i>Mbps · PM 15 min</i></div>
+      </div>`;
+  }else{
+    const cc = colorCalidad(r.evm_medio);
+    const subQ = `${r.tx_mcs!=null ? `MCS ${r.tx_mcs}/${r.rx_mcs}` : "--"}${r.snr!=null?` · SNR ${n(r.snr)} dB`:""}`;
+    bloque2 = `<div class="sensor" data-type="qual">
+        <div class="label">✦ Calidad EVM</div>
+        <div class="value v-${cc}">${n(r.evm_medio)}<small> dB</small></div>
+        <div class="sub">${esc(subQ)}</div>
+      </div>`;
+  }
+  return `<div class="lado">${cab}${senalBloque}${bloque2}</div>`;
 }
 
 // Tarjeta de un enlace Ceragon (grupo) con sus dos extremos
@@ -528,7 +541,6 @@ function render(data){
   let html = "";
   groups.forEach(g=>{
     const color = TECH_COLORS[g.tech] || "#38bdf8";
-    const esCeragonSec = g.tech === "ceragon";
     let nOk=0, nWarn=0, nAlarm=0, nOff=0;
     let cardsHtml = "";
 
@@ -538,37 +550,27 @@ function render(data){
       const info = NIVEL_INFO[nivel] || NIVEL_INFO.caido;
       const malo = nivel==="critico" || nivel==="caido" || nivel==="aviso";
       if(malo && !prevBad[r.nombre]){
-        const et = esCeragonSec ? `${r.grupo||""} ${r.lado||""}`.trim() : r.nombre;
+        const et = (r.lado ? `${r.grupo||""} ${r.lado}`.trim() : r.nombre);
         beep();
         notify((nivel==="caido"?"✖ ":"⚠ ") + et, (r.avisos||[]).join(" · ") || info.txt);
       }
       prevBad[r.nombre] = malo;
     });
 
-    if(esCeragonSec){
-      // Ceragon: una tarjeta por enlace (grupo) con sus dos extremos
-      const enlaces = [];
-      const byGrupo = {};
-      g.radios.forEach(r=>{
-        const gr = r.grupo || r.nombre;
-        if(!byGrupo[gr]){ byGrupo[gr] = {grupo:gr, ends:[]}; enlaces.push(byGrupo[gr]); }
-        byGrupo[gr].ends.push(r);
-      });
-      enlaces.forEach(e=>{
-        let peor = "ok";
-        e.ends.forEach(r=>{ const nv=r.nivel||"caido"; if(ORDEN_NIVEL[nv]>ORDEN_NIVEL[peor]) peor=nv; });
-        if(peor==="ok") nOk++; else if(peor==="aviso") nWarn++; else if(peor==="critico") nAlarm++; else nOff++;
-        cardsHtml += tarjetaEnlace(e.grupo, e.ends, color);
-      });
-    } else {
-      // Mimosa: una tarjeta por radio
-      g.radios.forEach(r=>{
-        const nivel = r.nivel || "caido";
-        if(nivel==="ok") nOk++; else if(nivel==="aviso") nWarn++;
-        else if(nivel==="critico") nAlarm++; else nOff++;
-        cardsHtml += tarjetaMimosa(r, color);
-      });
-    }
+    // Una tarjeta por enlace (grupo) con sus extremos, para Mimosa y Ceragon
+    const enlaces = [];
+    const byGrupo = {};
+    g.radios.forEach(r=>{
+      const gr = r.grupo || r.nombre;
+      if(!byGrupo[gr]){ byGrupo[gr] = {grupo:gr, ends:[]}; enlaces.push(byGrupo[gr]); }
+      byGrupo[gr].ends.push(r);
+    });
+    enlaces.forEach(e=>{
+      let peor = "ok";
+      e.ends.forEach(r=>{ const nv=r.nivel||"caido"; if(ORDEN_NIVEL[nv]>ORDEN_NIVEL[peor]) peor=nv; });
+      if(peor==="ok") nOk++; else if(peor==="aviso") nWarn++; else if(peor==="critico") nAlarm++; else nOff++;
+      cardsHtml += tarjetaEnlace(e.grupo, e.ends, color);
+    });
     const pills =
       (nAlarm ? `<span class="pill alarm">⚠ ${nAlarm} crítico</span>` : "") +
       (nWarn  ? `<span class="pill warn">⚠ ${nWarn} degradado</span>` : "") +
