@@ -421,6 +421,23 @@ def contar_satelites(texto):
     return len([p for p in texto.split(":") if p]) if texto else None
 
 
+def parsear_throughput_mimosa(texto):
+    """Campo throughput del Mimosa: 'ts:tx,rx;ts:tx,rx;...' (kbps).
+    Devuelve la ultima muestra (tx_mbps, rx_mbps)."""
+    if not texto:
+        return (None, None)
+    ultima = str(texto).strip().split(";")[-1]
+    if ":" not in ultima:
+        return (None, None)
+    _, _, par = ultima.partition(":")
+    partes = par.split(",")
+    tx = _f(partes[0]) if len(partes) > 0 else None
+    rx = _f(partes[1]) if len(partes) > 1 else None
+    # El radio reporta en kbps -> pasamos a Mbps
+    a_mbps = lambda v: round(v / 1000.0, 1) if v is not None else None
+    return (a_mbps(tx), a_mbps(rx))
+
+
 def normalizar_distancia(valor):
     """Devuelve la distancia en metros.
 
@@ -453,8 +470,10 @@ def parsear_radio(nombre, host, crudo):
     rem = rt.get("remote_info", {}) or {}
     mimo = rt.get("mimo", {}) or {}
     gps = rt.get("gps", {}) or {}
+    tp = rt.get("throughput", {}) or {}
     phy = parsear_get_phy(sm.get("get_phy", ""))
     remoto_rf = parsear_chan_info(rem.get("chan_info"))
+    tput_tx, tput_rx = parsear_throughput_mimosa(tp.get("throughput"))
 
     rssi = [_f(phy.get("rssi_%d" % i)) for i in range(4)]
     evm = [_f(phy.get("evm_%d" % i)) for i in range(4)]
@@ -526,6 +545,9 @@ def parsear_radio(nombre, host, crudo):
         "rx_streams": _i(phy.get("rx_streams")),
         "tx_phy_mbps": _f(phy.get("tx_phy_rate")),
         "rx_phy_mbps": _f(phy.get("rx_phy_rate")),
+        # Throughput real (Mbps) de la ultima muestra del radio
+        "tput_tx_mbps": tput_tx,
+        "tput_rx_mbps": tput_rx,
         "per_link": _f(phy.get("per_link")),
         "per_phy": _f(phy.get("per_phy")),
         "reintentos_tx": _i(phy.get("txretries"), 0),
