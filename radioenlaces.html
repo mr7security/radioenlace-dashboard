@@ -85,7 +85,8 @@
   .picos b{color:var(--text); font-variant-numeric:tabular-nums}
   .picos i{font-style:normal; opacity:.8}
   .ind{font-size:.6rem; color:var(--muted); text-align:center; margin-top:2px; white-space:nowrap}
-  .ind b{color:var(--text); font-variant-numeric:tabular-nums}
+  .ind b{font-variant-numeric:tabular-nums; font-weight:700}
+  .ind b.v-ok{color:var(--ok)} .ind b.v-warn{color:var(--warn)} .ind b.v-alarm{color:var(--alarm)} .ind b.v-off{color:var(--muted)}
   body.tv .lado .ind{font-size:clamp(.58rem,.82vw,1.25rem); margin-top:2px}
   body.tv .dual{gap:clamp(10px,1.6vw,32px)}
   body.tv .dual .dcell .t{font-size:clamp(.55rem,.8vw,1.15rem)}
@@ -206,7 +207,6 @@
     <button class="btn active" id="b6h" onclick="setRange(6)">6h</button>
     <button class="btn" id="b24h" onclick="setRange(24)">24h</button>
     <button class="btn" id="bAlert" onclick="toggleAlerts()">🔔 Alertas: OFF</button>
-    <button class="btn" id="bTV" onclick="toggleTV()">🖥️ Modo TV</button>
     <button class="btn" id="bPres" onclick="togglePresentacion()">🔁 Presentación</button>
   </div>
   <div id="clock">--:--:--</div>
@@ -355,7 +355,7 @@ function paintAlertBtn(){
 function toggleTV(){
   document.body.classList.toggle("tv");
   const on = document.body.classList.contains("tv");
-  $("bTV").classList.toggle("active", on);
+  $("bTV")?.classList.toggle("active", on);
   if(on){
     document.documentElement.requestFullscreen?.().catch(()=>{});
   }else{
@@ -443,6 +443,13 @@ function colorCalidad(v){
   if(v <= -20) return "warn";
   return "alarm";
 }
+// SNR: mismos umbrales que el semaforo del proxy (>=25 ok, 15-25 justo, <15 bajo)
+function colorSNR(v){
+  if(v===null||v===undefined||isNaN(v)) return "off";
+  if(v >= 25) return "ok";
+  if(v >= 15) return "warn";
+  return "alarm";
+}
 
 const NIVEL_INFO = {
   ok:      {cls:"ok",    txt:"✔ OK",         card:""},
@@ -508,7 +515,7 @@ function cuerpoLado(r){
             <div class="v2">${rr(r.tput_tx_mbps)}<small>Mbps</small></div></div>
         </div>
         <div class="picos">PHY máx Tx/Rx <b>${rr(r.tx_phy_mbps)}/${rr(r.rx_phy_mbps)}</b> <i>Mbps</i></div>
-        <div class="ind">SNR <b>${n(r.snr)}</b> dB · EVM <b>${n(r.evm_medio)}</b> dB</div>
+        <div class="ind">SNR <b class="v-${colorSNR(r.snr)}">${n(r.snr)}</b> dB · EVM <b class="v-${colorCalidad(r.evm_medio)}">${n(r.evm_medio)}</b> dB</div>
       </div>`;
   }
   return `<div class="lado">${cab}${senalBloque}${bloque2}</div>`;
