@@ -127,6 +127,7 @@
            border-bottom:1px solid #24334a; margin-bottom:8px}
   .resumen span{white-space:nowrap; text-align:center}
   .resumen b{color:var(--text); font-variant-numeric:tabular-nums}
+  .resumen i{font-style:normal; opacity:.65; font-size:.92em}
   body.tv .charts-row{display:none}   /* en TV, los enlaces de 2 lados van sin grafica para que quepan */
   /* En TV los dos lados se APILAN (uno arriba, otro abajo): cada lado ocupa todo
      el ancho de la tarjeta, asi los numeros se ven grandes y no se cortan. */
@@ -531,11 +532,14 @@ function barrasDetalle(r){
   const rr = v => (v===null||v===undefined) ? "--" : Math.round(v);
   let tercera;
   if(esCeragon){
-    const pm = r.pm||{};
-    tercera = `<div class="cbcol"><div class="cbt">Capacity / Throughput (PM 15 min)</div>
-      <div class="ut">Cap. media / pico <b>${rr(pm.cap_media)} / ${rr(pm.cap_pico)}</b> Mbps</div>
-      <div class="ut">Tput medio / pico <b>${rr(pm.tp_media)} / ${rr(pm.tp_pico)}</b> Mbps</div>
-      <div class="ut">Potencia Tx <b>${n(r.tx_power)}</b> dBm</div></div>`;
+    // Tercera columna: TSL (potencia de transmisión) por portadora, color neutro (no semáforo).
+    const barT = (v) => {
+      if(v===null||v===undefined) return `<div class="cbar"><span class="cbn">--</span></div>`;
+      const pct = Math.max(0, Math.min(100, (v-(-5))/(30-(-5))*100));
+      return `<div class="cbar"><span class="cfill" style="width:${pct}%;background:var(--accent)"></span><span class="cbn">${n(v,0)}</span></div>`;
+    };
+    const filasT = (r.tx_power_cadenas||[]).map((v,i)=>`<div class="crow"><span class="ci">${pref}${i}</span>${barT(v)}</div>`).join("") || "<div class='ut'>--</div>";
+    tercera = `<div class="cbcol"><div class="cbt">TSL (potencia Tx) por portadora (dBm)</div>${filasT}</div>`;
   }else{
     const cap = Math.max(r.tx_phy_mbps||0, r.rx_phy_mbps||0);
     const tp  = Math.max(r.tput_tx_mbps||0, r.tput_rx_mbps||0);
@@ -580,7 +584,17 @@ function cuerpoLado(r, conDetalle){
     </div>`;
   // --- Segundo bloque: Ceragon = Capacidad/Throughput; Mimosa = Calidad EVM ---
   let bloque2;
-  if(esCeragon){
+  if(esCeragon && conDetalle){
+    // Detalle: por lado, lo que difiere entre extremos: MSE (calidad) + TSL (potencia Tx).
+    // La capacidad/throughput es del enlace y va una sola vez en la franja resumen.
+    const cc = colorCalidad(r.evm_medio);
+    const tsl = (r.tx_power_cadenas||[]).filter(x=>x!=null).map(x=>n(x,0)).join(" / ") || n(r.tx_power,0);
+    bloque2 = `<div class="sensor" data-type="qual">
+        <div class="label">✦ Calidad MSE</div>
+        <div class="value v-${cc}">${n(r.evm_medio)}<small> dB</small></div>
+        <div class="sub">TSL (Tx) ${esc(tsl)} dBm</div>
+      </div>`;
+  }else if(esCeragon){
     const pm = r.pm||{};
     const rr = v => (v===null||v===undefined)?"--":Math.round(v);
     bloque2 = `<div class="sensor" data-type="qual">
@@ -612,7 +626,8 @@ function cuerpoLado(r, conDetalle){
   let extra = "";
   if(conDetalle){
     extra += barrasDetalle(r);          // barras por cadena/portadora + tercer bloque
-    extra += detalleHTML(r);
+    // Ceragon: la tabla de detalle era redundante (todo está ya en resumen + barras).
+    if(!esCeragon) extra += detalleHTML(r);
   }
   return `<div class="lado">${cab}${senalBloque}${bloque2}${extra}</div>`;
 }
@@ -634,11 +649,13 @@ function tarjetaEnlace(grupo, ends, color, conDetalle){
     const a = ends[0]||{}, b = ends[1]||{};
     const f = ends.find(r=>r.freq1!=null) || a;
     if(esCeragon){
+      const pm = a.pm||{};
+      const rr = v => (v===null||v===undefined) ? "--" : Math.round(v);
       resumen = `<div class="resumen">
         <span>📡 <b>${num(f.freq1)}/${num(f.freq2)}</b> MHz</span>
-        <span>🔧 <b>${esc((a.local&&a.local.modelo)||"--")}</b></span>
-        <span>🌡 <b>${n((a.local||{}).temperatura)}</b> / <b>${n((b.local||{}).temperatura)}</b> °C</span>
-        <span>⏱ uptime <b>${uptimeTexto(a.uptime_s)}</b> / <b>${uptimeTexto(b.uptime_s)}</b></span>
+        <span>⚡ Cap. <b>${rr(pm.cap_media)}/${rr(pm.cap_pico)}</b> · ⇅ Tput <b>${rr(pm.tp_media)}/${rr(pm.tp_pico)}</b> Mbps <i>(medio/pico)</i></span>
+        <span>🔧 <b>${esc((a.local&&a.local.modelo)||"--")}</b> · ${esc((a.remoto&&a.remoto.ip)||"--")}</span>
+        <span>🌡 <b>${n((a.local||{}).temperatura)}</b>/<b>${n((b.local||{}).temperatura)}</b> °C · ⏱ <b>${uptimeTexto(a.uptime_s)}</b></span>
       </div>`;
     }else{
       resumen = `<div class="resumen">
