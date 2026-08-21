@@ -220,6 +220,12 @@
   .tab:hover{color:var(--text); border-color:var(--accent)}
   .tab.active{background:var(--accent); color:#0f172a; border-color:var(--accent)}
   body.tv .tabs{display:none}   /* en presentacion no se muestran las pestañas */
+  body.tv .btns{display:none}   /* en presentacion se ocultan Alertas, Presentacion y 1h/6h/24h */
+  /* pie de pagina, solo en presentacion */
+  #pie-tv{display:none}
+  body.tv #pie-tv{display:flex; justify-content:center; align-items:center;
+                  height:26px; margin-top:6px; color:var(--muted);
+                  font-size:.82rem; letter-spacing:.12em; font-weight:700; text-transform:uppercase}
   /* Pestañas Mimosa y Ceragon: cada enlace en una fila a todo el ancho (horizontal),
      con los dos lados uno al lado del otro para aprovechar el espacio */
   body[data-vista="mimosa"] .cards,
@@ -268,6 +274,7 @@
 </header>
 <div id="banner"></div>
 <div id="sites"></div>
+<footer id="pie-tv">SGP - Departamento IT</footer>
 
 <div id="offline-overlay">
   <div class="ov-inner">
@@ -465,7 +472,9 @@ function fitTV(){
   todos.forEach(el => el.style.gridColumn = "");
   if(!document.body.classList.contains("tv")) return;
   const header = document.querySelector("header");
-  s.style.height = (window.innerHeight - header.offsetHeight - 12) + "px";
+  const pie = document.getElementById("pie-tv");
+  const pieH = (pie && getComputedStyle(pie).display !== "none") ? pie.offsetHeight + 6 : 0;
+  s.style.height = (window.innerHeight - header.offsetHeight - pieH - 12) + "px";
   const sites = todos.filter(el => el.style.display !== "none");  // solo visibles
   const nCards = el => el.querySelectorAll(".card").length;
   const isBig = el => nCards(el) >= 4;
@@ -968,6 +977,13 @@ tickData().then(tickHist);
 setInterval(tickData, REFRESH_S*1000);
 setInterval(tickHist, HIST_REFRESH_S*1000);
 window.addEventListener("resize", () => { drawAllCharts(); fitTV(); });
+// Salir de presentacion/TV con Esc (los botones estan ocultos en presentacion)
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape" && document.body.classList.contains("tv")){
+    if(presentacion) togglePresentacion();
+    if(document.body.classList.contains("tv")) toggleTV();
+  }
+});
 </script>
 </body>
 </html>
