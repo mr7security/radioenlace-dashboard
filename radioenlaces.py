@@ -218,6 +218,9 @@ CERAGON_PM = {
     "cap_media": CERAGON_BASE + ".6.3.4.3.1.1.8.2",  # Average capacity (Mbps)
     "tp_pico":   CERAGON_BASE + ".6.3.4.3.1.1.4.2",  # Peak throughput (Mbps)
     "tp_media":  CERAGON_BASE + ".6.3.4.3.1.1.5.2",  # Average throughput (Mbps)
+    # Seconds exceeding threshold: col14 = segundos del intervalo que superan el
+    # umbral (col14 + col16 = 900 = intervalo completo; col16 seria el complemento).
+    "seg_umbral": CERAGON_BASE + ".6.3.4.3.1.1.14.2",  # Seconds exceeding threshold (s)
 }
 
 _SNMP_DISPONIBLE = None
@@ -310,7 +313,7 @@ class ClienteCeragon:
         return mejor
 
     def _pm_capacidad(self):
-        """Devuelve las 4 metricas de Capacity/Throughput (Mbps) del PM."""
+        """Metricas del PM: Capacity/Throughput (Mbps) + seg_umbral (segundos)."""
         return {clave: self._pm_columna(oid) for clave, oid in CERAGON_PM.items()}
 
     def leer(self):

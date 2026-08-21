@@ -62,7 +62,7 @@
   .label{font-size:.66rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; white-space:nowrap}
   .value{font-size:2.3rem; font-weight:800; line-height:1.15; font-variant-numeric:tabular-nums; white-space:nowrap}
   .value small{font-size:.95rem; font-weight:500; color:var(--muted)}
-  .v-ok{color:var(--ok)} .v-warn{color:var(--warn)} .v-alarm{color:var(--alarm)}
+  .v-ok{color:var(--ok)} .v-warn{color:var(--warn)} .v-alarm{color:var(--alarm)} .v-off{color:var(--muted)}
   .sub{font-size:.66rem; color:var(--muted); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   /* rejilla compacta 2x2 con las 4 metricas de Capacity/Throughput */
   .pm4{display:grid; grid-template-columns:1fr 1fr; gap:2px 12px; margin-top:6px; width:100%; max-width:280px}
@@ -651,9 +651,12 @@ function tarjetaEnlace(grupo, ends, color, conDetalle){
     if(esCeragon){
       const pm = a.pm||{};
       const rr = v => (v===null||v===undefined) ? "--" : Math.round(v);
+      const su = pm.seg_umbral;
+      const suCls = (su===null||su===undefined) ? "off" : (su>=300 ? "alarm" : su>0 ? "warn" : "ok");
       resumen = `<div class="resumen">
         <span>📡 <b>${num(f.freq1)}/${num(f.freq2)}</b> MHz</span>
         <span>⚡ Cap. <b>${rr(pm.cap_media)}/${rr(pm.cap_pico)}</b> · ⇅ Tput <b>${rr(pm.tp_media)}/${rr(pm.tp_pico)}</b> Mbps <i>(medio/pico)</i></span>
+        <span>⚠ Seg. sobre umbral <b class="v-${suCls}">${(su===null||su===undefined)?"--":Math.round(su)}</b>/900 s</span>
         <span>🔧 <b>${esc((a.local&&a.local.modelo)||"--")}</b> · ${esc((a.remoto&&a.remoto.ip)||"--")}</span>
         <span>🌡 <b>${n((a.local||{}).temperatura)}</b>/<b>${n((b.local||{}).temperatura)}</b> °C · ⏱ <b>${uptimeTexto(a.uptime_s)}</b></span>
       </div>`;
