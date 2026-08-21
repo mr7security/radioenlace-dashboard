@@ -440,6 +440,18 @@ def parsear_throughput_mimosa(texto):
     return (a_mbps(tx), a_mbps(rx))
 
 
+def corregir_tput(tx, rx, tx_phy, rx_phy):
+    """El throughput no puede superar la capacidad PHY. Si lo hace, el radio
+    reporta el campo en una unidad mas fina (bps en vez de kbps, como algunos
+    B01): reescalamos dividiendo otra vez por 1000. Autocorrige por modelo."""
+    phy_max = max([p for p in (tx_phy, rx_phy) if p is not None], default=None)
+    peor = max([v for v in (tx, rx) if v is not None], default=None)
+    if phy_max and peor and peor > phy_max * 1.05:
+        tx = round(tx / 1000.0, 1) if tx is not None else None
+        rx = round(rx / 1000.0, 1) if rx is not None else None
+    return (tx, rx)
+
+
 def normalizar_distancia(valor):
     """Devuelve la distancia en metros.
 
@@ -476,6 +488,9 @@ def parsear_radio(nombre, host, crudo):
     phy = parsear_get_phy(sm.get("get_phy", ""))
     remoto_rf = parsear_chan_info(rem.get("chan_info"))
     tput_tx, tput_rx = parsear_throughput_mimosa(tp.get("throughput"))
+    tput_tx, tput_rx = corregir_tput(
+        tput_tx, tput_rx, _f(phy.get("tx_phy_rate")), _f(phy.get("rx_phy_rate"))
+    )
 
     rssi = [_f(phy.get("rssi_%d" % i)) for i in range(4)]
     evm = [_f(phy.get("evm_%d" % i)) for i in range(4)]
