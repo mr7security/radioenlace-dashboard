@@ -426,9 +426,11 @@ def parsear_throughput_mimosa(texto):
     Devuelve la ultima muestra (tx_mbps, rx_mbps)."""
     if not texto:
         return (None, None)
-    ultima = str(texto).strip().split(";")[-1]
-    if ":" not in ultima:
+    # Ultima muestra no vacia (algunos radios dejan un ';' al final)
+    segmentos = [s for s in str(texto).strip().split(";") if ":" in s]
+    if not segmentos:
         return (None, None)
+    ultima = segmentos[-1]
     _, _, par = ultima.partition(":")
     partes = par.split(",")
     tx = _f(partes[0]) if len(partes) > 0 else None

@@ -84,6 +84,9 @@
   .picos{font-size:.66rem; color:var(--muted); margin-top:8px; text-align:center; white-space:nowrap}
   .picos b{color:var(--text); font-variant-numeric:tabular-nums}
   .picos i{font-style:normal; opacity:.8}
+  .ind{font-size:.6rem; color:var(--muted); text-align:center; margin-top:2px; white-space:nowrap}
+  .ind b{color:var(--text); font-variant-numeric:tabular-nums}
+  body.tv .lado .ind{font-size:clamp(.58rem,.82vw,1.25rem); margin-top:2px}
   body.tv .dual{gap:clamp(10px,1.6vw,32px)}
   body.tv .dual .dcell .t{font-size:clamp(.55rem,.8vw,1.15rem)}
   body.tv .dual .v2{font-size:clamp(1.8rem,3.4vw,6rem)}
@@ -503,7 +506,8 @@ function cuerpoLado(r){
           <div class="dcell"><span class="t">Tput Rx</span>
             <div class="v2">${rr(r.tput_rx_mbps)}<small>Mbps</small></div></div>
         </div>
-        <div class="picos">PHY Tx/Rx <b>${rr(r.tx_phy_mbps)}/${rr(r.rx_phy_mbps)}</b> · Tput <b>${rr(r.tput_tx_mbps)}/${rr(r.tput_rx_mbps)}</b> · EVM <b>${n(r.evm_medio)}</b> <i>dB</i></div>
+        <div class="picos">PHY Tx/Rx <b>${rr(r.tx_phy_mbps)}/${rr(r.rx_phy_mbps)}</b> · Tput <b>${rr(r.tput_tx_mbps)}/${rr(r.tput_rx_mbps)}</b> <i>Mbps</i></div>
+        <div class="ind">SNR <b>${n(r.snr)}</b> dB · EVM <b>${n(r.evm_medio)}</b> dB</div>
       </div>`;
   }
   return `<div class="lado">${cab}${senalBloque}${bloque2}</div>`;
