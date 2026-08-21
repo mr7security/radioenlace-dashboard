@@ -187,9 +187,12 @@
   .tab:hover{color:var(--text); border-color:var(--accent)}
   .tab.active{background:var(--accent); color:#0f172a; border-color:var(--accent)}
   body.tv .tabs{display:none}   /* en presentacion no se muestran las pestañas */
-  /* En las pestañas de detalle (Mimosa/Ceragon) las tarjetas son mas anchas */
-  body[data-vista="mimosa"] .cards,
+  /* Pestaña Ceragon: tarjetas mas anchas en rejilla */
   body[data-vista="ceragon"] .cards{grid-template-columns:repeat(auto-fit,minmax(440px,1fr))}
+  /* Pestaña Mimosa: cada enlace en una fila a todo el ancho (horizontal), con los
+     dos lados uno al lado del otro para aprovechar el espacio */
+  body[data-vista="mimosa"] .cards{grid-template-columns:1fr}
+  body[data-vista="mimosa"] .doslados{grid-template-columns:1fr 1fr; gap:16px}
 
   /* ===== Cartel de SIN CONEXIÓN a pantalla completa (solo modo TV) ===== */
   #offline-overlay{position:fixed; inset:0; z-index:9999; display:none;
