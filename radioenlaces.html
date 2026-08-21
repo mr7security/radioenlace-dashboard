@@ -14,7 +14,10 @@
   header{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:16px}
   h1{font-size:1.3rem; font-weight:600; text-transform:uppercase; letter-spacing:.03em}
   h1 span{color:var(--accent)}
-  #clock{font-size:1.05rem; color:var(--muted); font-variant-numeric:tabular-nums}
+  #reloj-box{text-align:right; line-height:1.2}
+  #clock{font-size:1.05rem; color:var(--text); font-variant-numeric:tabular-nums}
+  #servidor{font-size:.72rem; color:var(--muted); margin-top:2px}
+  #servidor:not(:empty)::before{content:"🖥 "}
   .btns{display:flex; gap:8px; flex-wrap:wrap}
   .btn{background:var(--card); color:var(--text); border:1px solid #334155; border-radius:8px;
        padding:7px 13px; font-size:.85rem; cursor:pointer; text-transform:uppercase; letter-spacing:.02em}
@@ -122,10 +125,11 @@
   .lado .cbars{order:3}
   .lado .detalle{order:4}
   /* franja resumen del enlace (vista Mimosa): 4 celdas repartidas y centradas */
-  .resumen{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:6px 12px;
-           padding:8px 4px; font-size:.74rem; color:var(--muted);
-           border-bottom:1px solid #24334a; margin-bottom:8px}
-  .resumen span{white-space:nowrap; text-align:center}
+  .resumen{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:6px 10px;
+           padding:10px 12px; font-size:.78rem; color:var(--muted);
+           background:rgba(148,163,184,.08); border:1px solid #24334a;
+           border-left:3px solid var(--sc,#38bdf8); border-radius:10px; margin-bottom:10px}
+  .resumen span{white-space:nowrap; text-align:center; background:rgba(2,6,23,.35); padding:4px 8px; border-radius:6px}
   .resumen b{color:var(--text); font-variant-numeric:tabular-nums}
   body.tv .charts-row{display:none}   /* en TV, los enlaces de 2 lados van sin grafica para que quepan */
   /* En TV los dos lados se APILAN (uno arriba, otro abajo): cada lado ocupa todo
@@ -254,7 +258,10 @@
     <button class="btn" id="bAlert" onclick="toggleAlerts()">🔔 Alertas: OFF</button>
     <button class="btn" id="bPres" onclick="togglePresentacion()">🔁 Presentación</button>
   </div>
-  <div id="clock">--:--:--</div>
+  <div id="reloj-box">
+    <div id="clock">--/--/---- --:--:--</div>
+    <div id="servidor"></div>
+  </div>
 </header>
 <div id="banner"></div>
 <div id="sites"></div>
@@ -578,36 +585,62 @@ function cuerpoLado(r, conDetalle){
       <div class="rangetxt"><span>-90</span><span>-30 dBm</span></div>
       <div class="sub">${cadenas?`${esCeragon?"portadoras":"cadenas"}: ${cadenas} dBm`:""}</div>
     </div>`;
-  // --- Segundo bloque: Ceragon = Capacidad/Throughput; Mimosa = Calidad EVM ---
+  // --- Segundo bloque: Capacidad/Throughput.
+  //  En las pestañas (conDetalle) va agrandado como el RSL: valor grande + barra
+  //  de utilizacion (trafico vs capacidad/PHY). En General/presentacion se deja
+  //  la version compacta de dos valores (NO se toca el monitor).
   let bloque2;
+  const rr = v => (v===null||v===undefined)?"--":Math.round(v);
   if(esCeragon){
     const pm = r.pm||{};
-    const rr = v => (v===null||v===undefined)?"--":Math.round(v);
-    bloque2 = `<div class="sensor" data-type="qual">
-        <div class="label">⚡ Capacidad / Throughput</div>
-        <div class="dual">
-          <div class="dcell"><span class="t">Cap. media</span>
-            <div class="v2" style="color:var(--accent)">${rr(pm.cap_media)}<small>Mbps</small></div></div>
-          <div class="dcell"><span class="t">Tput medio</span>
-            <div class="v2">${rr(pm.tp_media)}<small>Mbps</small></div></div>
-        </div>
-        <div class="picos">Cap. pico <b>${rr(pm.cap_pico)}</b> · Tput pico <b>${rr(pm.tp_pico)}</b> <i>Mbps · PM 15 min</i></div>
-      </div>`;
+    if(conDetalle){
+      const tp = pm.tp_media, cap = (pm.cap_media!==null&&pm.cap_media!==undefined)?pm.cap_media:pm.cap_pico;
+      const util = (cap>0 && tp!==null && tp!==undefined) ? Math.min(100, tp/cap*100) : 0;
+      bloque2 = `<div class="sensor" data-type="qual">
+          <div class="label">⚡ Throughput medio</div>
+          <div class="value" style="color:var(--accent)">${rr(tp)}<small> Mbps</small></div>
+          <div class="bar"><div class="fill" style="left:0;width:${util}%;background:var(--accent)"></div>
+            <div class="dot" style="left:${util}%;background:var(--accent)"></div></div>
+          <div class="rangetxt"><span>0</span><span>${rr(cap)} Mbps cap.</span></div>
+          <div class="sub">Cap. media ${rr(pm.cap_media)} · picos: Tput ${rr(pm.tp_pico)} / Cap ${rr(pm.cap_pico)} Mbps</div>
+        </div>`;
+    }else{
+      bloque2 = `<div class="sensor" data-type="qual">
+          <div class="label">⚡ Capacidad / Throughput</div>
+          <div class="dual">
+            <div class="dcell"><span class="t">Cap. media</span>
+              <div class="v2" style="color:var(--accent)">${rr(pm.cap_media)}<small>Mbps</small></div></div>
+            <div class="dcell"><span class="t">Tput medio</span>
+              <div class="v2">${rr(pm.tp_media)}<small>Mbps</small></div></div>
+          </div>
+          <div class="picos">Cap. pico <b>${rr(pm.cap_pico)}</b> · Tput pico <b>${rr(pm.tp_pico)}</b> <i>Mbps · PM 15 min</i></div>
+        </div>`;
+    }
   }else{
-    // Mimosa: throughput real como valor grande (comparable con Ceragon);
-    // la tasa PHY (techo maximo) queda como referencia en la linea pequeña.
-    const rr = v => (v===null||v===undefined)?"--":Math.round(v);
-    bloque2 = `<div class="sensor" data-type="qual">
-        <div class="label">⚡ Capacidad / Throughput</div>
-        <div class="dual">
-          <div class="dcell"><span class="t">Tput Rx</span>
-            <div class="v2" style="color:var(--accent)">${rr(r.tput_rx_mbps)}<small>Mbps</small></div></div>
-          <div class="dcell"><span class="t">Tput Tx</span>
-            <div class="v2">${rr(r.tput_tx_mbps)}<small>Mbps</small></div></div>
-        </div>
-        <div class="picos">PHY máx Tx/Rx <b>${rr(r.tx_phy_mbps)}/${rr(r.rx_phy_mbps)}</b> <i>Mbps</i></div>
-        <div class="ind">SNR <b class="v-${colorSNR(r.snr)}">${n(r.snr)}</b> dB · EVM <b class="v-${colorCalidad(r.evm_medio)}">${n(r.evm_medio)}</b> dB</div>
-      </div>`;
+    if(conDetalle){
+      const tp = r.tput_rx_mbps, cap = Math.max(r.tx_phy_mbps||0, r.rx_phy_mbps||0);
+      const util = (cap>0 && tp!==null && tp!==undefined) ? Math.min(100, tp/cap*100) : 0;
+      bloque2 = `<div class="sensor" data-type="qual">
+          <div class="label">⚡ Throughput Rx</div>
+          <div class="value" style="color:var(--accent)">${rr(tp)}<small> Mbps</small></div>
+          <div class="bar"><div class="fill" style="left:0;width:${util}%;background:var(--accent)"></div>
+            <div class="dot" style="left:${util}%;background:var(--accent)"></div></div>
+          <div class="rangetxt"><span>0</span><span>${rr(cap)} Mbps PHY</span></div>
+          <div class="sub">Tput Tx ${rr(r.tput_tx_mbps)} · SNR <b class="v-${colorSNR(r.snr)}">${n(r.snr)}</b> · EVM <b class="v-${colorCalidad(r.evm_medio)}">${n(r.evm_medio)}</b> dB</div>
+        </div>`;
+    }else{
+      bloque2 = `<div class="sensor" data-type="qual">
+          <div class="label">⚡ Capacidad / Throughput</div>
+          <div class="dual">
+            <div class="dcell"><span class="t">Tput Rx</span>
+              <div class="v2" style="color:var(--accent)">${rr(r.tput_rx_mbps)}<small>Mbps</small></div></div>
+            <div class="dcell"><span class="t">Tput Tx</span>
+              <div class="v2">${rr(r.tput_tx_mbps)}<small>Mbps</small></div></div>
+          </div>
+          <div class="picos">PHY máx Tx/Rx <b>${rr(r.tx_phy_mbps)}/${rr(r.rx_phy_mbps)}</b> <i>Mbps</i></div>
+          <div class="ind">SNR <b class="v-${colorSNR(r.snr)}">${n(r.snr)}</b> dB · EVM <b class="v-${colorCalidad(r.evm_medio)}">${n(r.evm_medio)}</b> dB</div>
+        </div>`;
+    }
   }
   let extra = "";
   if(conDetalle){
@@ -738,6 +771,7 @@ function tarjetaMimosa(r, color){
 function render(data){
   ultimaData = data;
   radiosActuales = (data.radios||[]).map(r=>r.nombre);
+  if(data.servidor){ const sv=$("servidor"); if(sv) sv.textContent = data.servidor; }
 
   // Alertas sonoras: por CADA radio (en cualquier pestaña), al entrar en aviso/critico/caido
   (data.radios||[]).forEach(r=>{
@@ -909,7 +943,11 @@ async function tickHist(){
   histSeries = nuevos;
   drawAllCharts();
 }
-setInterval(()=>{ $("clock").textContent = new Date().toLocaleTimeString(); updateOverlay(); }, 1000);
+function fmtReloj(d){
+  const p = n => String(n).padStart(2,"0");
+  return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+setInterval(()=>{ $("clock").textContent = fmtReloj(new Date()); updateOverlay(); }, 1000);
 paintAlertBtn();
 tickData().then(tickHist);
 setInterval(tickData, REFRESH_S*1000);

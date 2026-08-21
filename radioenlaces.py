@@ -27,6 +27,7 @@ import math
 import os
 import re
 import shutil
+import socket
 import sqlite3
 import ssl
 import subprocess
@@ -39,6 +40,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+HOSTNAME = socket.gethostname()   # nombre del servidor que aloja el dashboard
 CONFIG_PATH = os.path.join(BASE_DIR, "radios.json")
 DB_PATH = os.path.join(BASE_DIR, "radioenlaces.db")
 HTML_PATH = os.path.join(BASE_DIR, "radioenlaces.html")
@@ -1008,6 +1010,7 @@ class Monitor:
         return {
             "actualizado": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "intervalo": self.cfg.get("intervalo_segundos", 15),
+            "servidor": self.cfg.get("nombre_servidor") or HOSTNAME,
             "radios": [estado[n] for n in self.nombres() if n in estado],
         }
 
