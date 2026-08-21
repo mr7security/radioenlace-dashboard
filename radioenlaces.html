@@ -85,6 +85,9 @@
   .dual .dcell .t{font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px}
   .dual .v2{font-size:1.95rem; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.05; white-space:nowrap; display:flex; align-items:baseline; justify-content:center; gap:2px}
   .dual .v2 small{font-size:.46em; color:var(--muted); font-weight:500}
+  /* barra por valor dentro de cada columna (pestañas): la barra ocupa todo el ancho */
+  .dual .dcell .bar{width:100%; margin:6px 0 2px}
+  .dual .dcell .rangetxt{width:100%}
   .picos{font-size:.66rem; color:var(--muted); margin-top:8px; text-align:center; white-space:nowrap}
   .picos b{color:var(--text); font-variant-numeric:tabular-nums}
   .picos i{font-style:normal; opacity:.8}
@@ -586,23 +589,33 @@ function cuerpoLado(r, conDetalle){
       <div class="sub">${cadenas?`${esCeragon?"portadoras":"cadenas"}: ${cadenas} dBm`:""}</div>
     </div>`;
   // --- Segundo bloque: Capacidad/Throughput.
-  //  En las pestañas (conDetalle) va agrandado como el RSL: valor grande + barra
-  //  de utilizacion (trafico vs capacidad/PHY). En General/presentacion se deja
-  //  la version compacta de dos valores (NO se toca el monitor).
+  //  En las pestañas (conDetalle): los DOS valores, cada uno con su barra en la
+  //  misma escala 0..pico (Cap/Tput en Ceragon, Rx/Tx en Mimosa). En General/
+  //  presentacion se deja la version compacta de dos valores (NO se toca el monitor).
   let bloque2;
   const rr = v => (v===null||v===undefined)?"--":Math.round(v);
+  // columna con valor grande + su barra (0..max) + rango, para las pestañas (conDetalle)
+  const colVB = (lab, val, max, colr) => {
+    const pct = (max>0 && val!==null && val!==undefined) ? Math.max(0,Math.min(100, val/max*100)) : 0;
+    return `<div class="dcell">
+        <span class="t">${lab}</span>
+        <div class="v2" style="color:${colr}">${rr(val)}<small>Mbps</small></div>
+        <div class="bar"><div class="fill" style="left:0;width:${pct}%;background:${colr}"></div>
+          <div class="dot" style="left:${pct}%;background:${colr}"></div></div>
+        <div class="rangetxt"><span>0</span><span>${rr(max)}</span></div>
+      </div>`;
+  };
   if(esCeragon){
     const pm = r.pm||{};
     if(conDetalle){
-      const tp = pm.tp_media, cap = (pm.cap_media!==null&&pm.cap_media!==undefined)?pm.cap_media:pm.cap_pico;
-      const util = (cap>0 && tp!==null && tp!==undefined) ? Math.min(100, tp/cap*100) : 0;
+      const maxc = pm.cap_pico||0;   // escala comun 0..capacidad pico (techo del enlace)
       bloque2 = `<div class="sensor" data-type="qual">
-          <div class="label">⚡ Throughput medio</div>
-          <div class="value" style="color:var(--accent)">${rr(tp)}<small> Mbps</small></div>
-          <div class="bar"><div class="fill" style="left:0;width:${util}%;background:var(--accent)"></div>
-            <div class="dot" style="left:${util}%;background:var(--accent)"></div></div>
-          <div class="rangetxt"><span>0</span><span>${rr(cap)} Mbps cap.</span></div>
-          <div class="sub">Cap. media ${rr(pm.cap_media)} · picos: Tput ${rr(pm.tp_pico)} / Cap ${rr(pm.cap_pico)} Mbps</div>
+          <div class="label">⚡ Capacidad / Throughput</div>
+          <div class="dual">
+            ${colVB("Cap. media", pm.cap_media, maxc, "#818cf8")}
+            ${colVB("Tput medio", pm.tp_media, maxc, "var(--accent)")}
+          </div>
+          <div class="picos">Escala 0–<b>${rr(maxc)}</b> Mbps (cap. pico) · pico Tput <b>${rr(pm.tp_pico)}</b> · PM 15 min</div>
         </div>`;
     }else{
       bloque2 = `<div class="sensor" data-type="qual">
@@ -618,15 +631,15 @@ function cuerpoLado(r, conDetalle){
     }
   }else{
     if(conDetalle){
-      const tp = r.tput_rx_mbps, cap = Math.max(r.tx_phy_mbps||0, r.rx_phy_mbps||0);
-      const util = (cap>0 && tp!==null && tp!==undefined) ? Math.min(100, tp/cap*100) : 0;
+      const maxp = Math.max(r.tx_phy_mbps||0, r.rx_phy_mbps||0);   // escala 0..PHY máx
       bloque2 = `<div class="sensor" data-type="qual">
-          <div class="label">⚡ Throughput Rx</div>
-          <div class="value" style="color:var(--accent)">${rr(tp)}<small> Mbps</small></div>
-          <div class="bar"><div class="fill" style="left:0;width:${util}%;background:var(--accent)"></div>
-            <div class="dot" style="left:${util}%;background:var(--accent)"></div></div>
-          <div class="rangetxt"><span>0</span><span>${rr(cap)} Mbps PHY</span></div>
-          <div class="sub">Tput Tx ${rr(r.tput_tx_mbps)} · SNR <b class="v-${colorSNR(r.snr)}">${n(r.snr)}</b> · EVM <b class="v-${colorCalidad(r.evm_medio)}">${n(r.evm_medio)}</b> dB</div>
+          <div class="label">⚡ Throughput (Rx / Tx)</div>
+          <div class="dual">
+            ${colVB("Tput Rx", r.tput_rx_mbps, maxp, "var(--accent)")}
+            ${colVB("Tput Tx", r.tput_tx_mbps, maxp, "#818cf8")}
+          </div>
+          <div class="picos">Escala 0–<b>${rr(maxp)}</b> Mbps (PHY máx)</div>
+          <div class="ind">SNR <b class="v-${colorSNR(r.snr)}">${n(r.snr)}</b> dB · EVM <b class="v-${colorCalidad(r.evm_medio)}">${n(r.evm_medio)}</b> dB</div>
         </div>`;
     }else{
       bloque2 = `<div class="sensor" data-type="qual">
@@ -943,9 +956,11 @@ async function tickHist(){
   histSeries = nuevos;
   drawAllCharts();
 }
+const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+const MESES_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 function fmtReloj(d){
   const p = n => String(n).padStart(2,"0");
-  return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  return `${DIAS_SEM[d.getDay()]}, ${d.getDate()} de ${MESES_ES[d.getMonth()]} de ${d.getFullYear()}, ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 setInterval(()=>{ $("clock").textContent = fmtReloj(new Date()); updateOverlay(); }, 1000);
 paintAlertBtn();
