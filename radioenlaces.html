@@ -115,6 +115,15 @@
   .ut{font-size:.64rem; color:var(--muted); margin-top:4px; font-variant-numeric:tabular-nums}
   .lado-charts{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px}
   .lado-charts .chartblock .label{font-size:.62rem; margin-bottom:2px}
+  /* orden dentro de cada lado por importancia: nombre, RSSI, capacidad, barras, detalle */
+  .lado .lado-h{order:0}
+  .lado .cbars{order:3}
+  .lado .detalle{order:4}
+  /* franja resumen del enlace (vista Mimosa) */
+  .resumen{display:flex; flex-wrap:wrap; gap:6px 20px; padding:8px 4px 8px; font-size:.74rem;
+           color:var(--muted); border-bottom:1px solid #24334a; margin-bottom:8px}
+  .resumen span{white-space:nowrap}
+  .resumen b{color:var(--text); font-variant-numeric:tabular-nums}
   body.tv .charts-row{display:none}   /* en TV, los enlaces de 2 lados van sin grafica para que quepan */
   /* En TV los dos lados se APILAN (uno arriba, otro abajo): cada lado ocupa todo
      el ancho de la tarjeta, asi los numeros se ven grandes y no se cortan. */
@@ -604,6 +613,18 @@ function tarjetaEnlace(grupo, ends, color, conDetalle){
   const col = (ends.find(r=>r.color)||{}).color || color;
   // En el detalle Mimosa: 4 graficas por extremo (RSSI, SNR, Throughput, Temperatura)
   const mimosaDet = conDetalle && ends[0] && ends[0].tipo !== "ceragon";
+  // Franja resumen del enlace (solo detalle Mimosa)
+  let resumen = "";
+  if(mimosaDet){
+    const a = ends[0]||{}, b = ends[1]||{};
+    const f = ends.find(r=>r.distancia_m!=null) || a;
+    resumen = `<div class="resumen">
+      <span>📏 <b>${n(f.distancia_m,0)}</b> m</span>
+      <span>📡 <b>${num(f.freq1)}/${num(f.freq2)}</b> MHz${f.ancho_canal?` · ${esc(f.ancho_canal)}`:""}${f.banda?` · ${esc(f.banda)} GHz`:""}</span>
+      <span>📶 Disp. <b>${n(a.disponibilidad,3)}%</b> / <b>${n(b.disponibilidad,3)}%</b></span>
+      <span>⏱ uptime <b>${uptimeTexto(a.uptime_s)}</b> / <b>${uptimeTexto(b.uptime_s)}</b></span>
+    </div>`;
+  }
   let chartsBlock;
   if(mimosaDet){
     const cols = ends.map(r=>{
@@ -629,6 +650,7 @@ function tarjetaEnlace(grupo, ends, color, conDetalle){
         <span class="tech">${esc(modelo)}</span>
         <span class="status ${info.cls}">${info.txt}</span>
       </div>
+      ${resumen}
       <div class="doslados">${ends.map(r=>cuerpoLado(r, conDetalle)).join("")}</div>
       ${chartsBlock}
     </div>`;
