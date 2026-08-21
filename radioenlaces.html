@@ -982,6 +982,7 @@ document.addEventListener("keydown", e => {
   if(e.key === "Escape" && document.body.classList.contains("tv")){
     if(presentacion) togglePresentacion();
     if(document.body.classList.contains("tv")) toggleTV();
+    setVista("general");   // al salir de presentacion, volver a la vista General
   }
 });
 </script>
