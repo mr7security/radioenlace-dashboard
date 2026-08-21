@@ -101,6 +101,20 @@
   .lado-h .lname{font-size:.85rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em}
   .lado .err{padding:20px 8px; text-align:center}
   .charts-row{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px}
+
+  /* ===== Vista Mimosa (detalle): barras por cadena, utilizacion, mas graficas ===== */
+  .cbars{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-top:10px}
+  .cbcol .cbt{font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:5px}
+  .crow{display:grid; grid-template-columns:24px 1fr; align-items:center; gap:6px; margin-bottom:4px}
+  .crow .ci{font-size:.62rem; color:var(--muted)}
+  .cbar{position:relative; height:13px; background:#0b1120; border-radius:3px; overflow:hidden; display:flex; align-items:center}
+  .cbar .cfill{position:absolute; left:0; top:0; bottom:0; border-radius:3px; opacity:.85}
+  .cbar .cbn{position:relative; margin-left:auto; padding-right:6px; font-size:.6rem; font-variant-numeric:tabular-nums; color:var(--text)}
+  .ubar{height:16px; background:#0b1120; border-radius:4px; overflow:hidden}
+  .ubar .ufill{display:block; height:100%; background:var(--accent); border-radius:4px}
+  .ut{font-size:.64rem; color:var(--muted); margin-top:4px; font-variant-numeric:tabular-nums}
+  .lado-charts{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px}
+  .lado-charts .chartblock .label{font-size:.62rem; margin-bottom:2px}
   body.tv .charts-row{display:none}   /* en TV, los enlaces de 2 lados van sin grafica para que quepan */
   /* En TV los dos lados se APILAN (uno arriba, otro abajo): cada lado ocupa todo
      el ancho de la tarjeta, asi los numeros se ven grandes y no se cortan. */
@@ -489,6 +503,30 @@ const NIVEL_INFO = {
 /* ---------- tarjeta Ceragon con dos lados ---------- */
 const ORDEN_NIVEL = {ok:0, aviso:1, critico:2, caido:3};
 
+const CVAR = {ok:"var(--ok)", warn:"var(--warn)", alarm:"var(--alarm)", off:"var(--off)"};
+
+// Barras por cadena (RSSI y EVM) + barra de utilizacion, para el detalle Mimosa
+function barrasDetalleMimosa(r){
+  const barra = (v, min, max, colFn) => {
+    if(v===null||v===undefined) return `<div class="cbar"><span class="cbn">--</span></div>`;
+    const pct = Math.max(0, Math.min(100, (v-min)/(max-min)*100));
+    return `<div class="cbar"><span class="cfill" style="width:${pct}%;background:${CVAR[colFn(v)]}"></span><span class="cbn">${n(v)}</span></div>`;
+  };
+  const filasR = (r.rssi_cadenas||[]).map((v,i)=>`<div class="crow"><span class="ci">C${i}</span>${barra(v,-90,-30,colorSenal)}</div>`).join("") || "<div class='ut'>--</div>";
+  const filasE = (r.evm_cadenas||[]).map((v,i)=>`<div class="crow"><span class="ci">C${i}</span>${barra(v,-35,-10,colorCalidad)}</div>`).join("") || "<div class='ut'>--</div>";
+  const cap = Math.max(r.tx_phy_mbps||0, r.rx_phy_mbps||0);
+  const tp  = Math.max(r.tput_tx_mbps||0, r.tput_rx_mbps||0);
+  const util = cap>0 ? Math.min(100, tp/cap*100) : 0;
+  return `<div class="cbars">
+    <div class="cbcol"><div class="cbt">RSSI por cadena (dBm)</div>${filasR}</div>
+    <div class="cbcol"><div class="cbt">EVM por cadena (dB)</div>${filasE}</div>
+    <div class="cbcol"><div class="cbt">Utilización del enlace</div>
+      <div class="ubar"><span class="ufill" style="width:${util}%"></span></div>
+      <div class="ut">${Math.round(util)}% &middot; ${Math.round(tp)} / ${Math.round(cap)} Mbps (tráfico / PHY)</div>
+    </div>
+  </div>`;
+}
+
 // Contenido de un extremo (lado) de un enlace, para Ceragon o Mimosa.
 // conDetalle=true añade la tabla de detalle completa (pestañas Mimosa/Ceragon).
 function cuerpoLado(r, conDetalle){
@@ -547,8 +585,12 @@ function cuerpoLado(r, conDetalle){
         <div class="ind">SNR <b class="v-${colorSNR(r.snr)}">${n(r.snr)}</b> dB · EVM <b class="v-${colorCalidad(r.evm_medio)}">${n(r.evm_medio)}</b> dB</div>
       </div>`;
   }
-  const detalle = conDetalle ? detalleHTML(r) : "";
-  return `<div class="lado">${cab}${senalBloque}${bloque2}${detalle}</div>`;
+  let extra = "";
+  if(conDetalle){
+    if(!esCeragon) extra += barrasDetalleMimosa(r);   // barras por cadena + utilizacion
+    extra += detalleHTML(r);
+  }
+  return `<div class="lado">${cab}${senalBloque}${bloque2}${extra}</div>`;
 }
 
 // Tarjeta de un enlace (grupo) con sus dos extremos.
@@ -560,10 +602,27 @@ function tarjetaEnlace(grupo, ends, color, conDetalle){
   const modelo = (ends.find(r=>r.local&&r.local.modelo)||{}).local?.modelo || "";
   // color propio de la tarjeta si viene en la config; si no, el de la seccion
   const col = (ends.find(r=>r.color)||{}).color || color;
-  const charts = ends.map(r=>`<div class="chartblock" data-type="sig">
-      <div class="label">${esc(r.lado||"")} — RSL histórico</div>
-      <canvas class="chart" data-key="${esc(r.nombre)}|sig" data-color="${col}"></canvas>
-    </div>`).join("");
+  // En el detalle Mimosa: 4 graficas por extremo (RSSI, SNR, Throughput, Temperatura)
+  const mimosaDet = conDetalle && ends[0] && ends[0].tipo !== "ceragon";
+  let chartsBlock;
+  if(mimosaDet){
+    const cols = ends.map(r=>{
+      const k = esc(r.nombre);
+      return `<div class="lado-charts">
+        <div class="chartblock"><div class="label">${esc(r.lado||"")} — RSSI (dBm)</div><canvas class="chart" data-key="${k}|sig" data-color="${col}"></canvas></div>
+        <div class="chartblock"><div class="label">SNR (dB)</div><canvas class="chart" data-key="${k}|snr" data-color="#22c55e"></canvas></div>
+        <div class="chartblock"><div class="label">Throughput Rx (Mbps)</div><canvas class="chart" data-key="${k}|tput" data-color="#38bdf8"></canvas></div>
+        <div class="chartblock"><div class="label">Temperatura (°C)</div><canvas class="chart" data-key="${k}|temp" data-color="#f59e0b"></canvas></div>
+      </div>`;
+    }).join("");
+    chartsBlock = `<div class="charts" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">${cols}</div>`;
+  }else{
+    const charts = ends.map(r=>`<div class="chartblock" data-type="sig">
+        <div class="label">${esc(r.lado||"")} — RSL histórico</div>
+        <canvas class="chart" data-key="${esc(r.nombre)}|sig" data-color="${col}"></canvas>
+      </div>`).join("");
+    chartsBlock = `<div class="charts charts-row">${charts}</div>`;
+  }
   return `<div class="card ${info.card}${conDetalle?" detalle-on":""}" style="--sc:${col}">
       <div class="card-h">
         <h2>${esc(grupo)}</h2>
@@ -571,7 +630,7 @@ function tarjetaEnlace(grupo, ends, color, conDetalle){
         <span class="status ${info.cls}">${info.txt}</span>
       </div>
       <div class="doslados">${ends.map(r=>cuerpoLado(r, conDetalle)).join("")}</div>
-      <div class="charts charts-row">${charts}</div>
+      ${chartsBlock}
     </div>`;
 }
 
@@ -782,14 +841,21 @@ async function tickHist(){
     try{
       const r = await fetch("/api/historico?radio="+encodeURIComponent(nombre)+"&horas=24", {cache:"no-store"});
       const j = await r.json();
-      const sig=[], qual=[];
+      const sig=[], qual=[], snr=[], tput=[], temp=[];
       (j.datos||[]).forEach(d=>{
         if(d.rssi!=null) sig.push([d.ts, d.rssi]);
         const q = (d.snr!=null) ? d.snr : d.evm;   // SNR en Mimosa, MSE en Ceragon
         if(q!=null) qual.push([d.ts, q]);
+        if(d.snr!=null) snr.push([d.ts, d.snr]);
+        const tp = (d.tput_rx!=null) ? d.tput_rx : d.tput_tx;
+        if(tp!=null) tput.push([d.ts, tp]);
+        if(d.temp_local!=null) temp.push([d.ts, d.temp_local]);
       });
       nuevos[nombre+"|sig"] = sig;
       nuevos[nombre+"|qual"] = qual;
+      nuevos[nombre+"|snr"] = snr;
+      nuevos[nombre+"|tput"] = tput;
+      nuevos[nombre+"|temp"] = temp;
     }catch(e){}
   }));
   histSeries = nuevos;

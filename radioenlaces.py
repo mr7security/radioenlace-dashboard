@@ -814,15 +814,20 @@ CREATE TABLE IF NOT EXISTS muestras (
     rssi_remoto REAL, evm_remoto REAL,
     tx_mcs INTEGER, rx_mcs INTEGER,
     tx_phy REAL, rx_phy REAL,
-    per REAL, temp_local REAL, temp_remoto REAL
+    per REAL, temp_local REAL, temp_remoto REAL,
+    tput_tx REAL, tput_rx REAL
 );
 CREATE INDEX IF NOT EXISTS idx_muestras_radio_ts ON muestras (radio, ts);
 """
 
+# Columnas que se han ido añadiendo despues (para migrar BD antiguas con ALTER)
+COLUMNAS_NUEVAS = {"tput_tx": "REAL", "tput_rx": "REAL"}
+
 COLUMNAS = (
     "ts, radio, conectado, rssi, rssi0, rssi1, rssi2, rssi3,"
     " evm, evm0, evm1, evm2, evm3, ruido, snr, rssi_remoto, evm_remoto,"
-    " tx_mcs, rx_mcs, tx_phy, rx_phy, per, temp_local, temp_remoto"
+    " tx_mcs, rx_mcs, tx_phy, rx_phy, per, temp_local, temp_remoto,"
+    " tput_tx, tput_rx"
 )
 N_COLUMNAS = len(COLUMNAS.split(","))
 
@@ -835,6 +840,12 @@ class Historico:
         con = sqlite3.connect(self.ruta)
         try:
             con.executescript(ESQUEMA)
+            # Migracion: añade columnas nuevas a bases de datos ya existentes
+            for col, tipo in COLUMNAS_NUEVAS.items():
+                try:
+                    con.execute("ALTER TABLE muestras ADD COLUMN %s %s" % (col, tipo))
+                except sqlite3.OperationalError:
+                    pass  # ya existe
             con.commit()
         finally:
             con.close()
@@ -871,6 +882,7 @@ class Historico:
             m.get("per_link"),
             (m.get("local") or {}).get("temperatura"),
             (m.get("remoto") or {}).get("temperatura"),
+            m.get("tput_tx_mbps"), m.get("tput_rx_mbps"),
         )
         assert len(fila) == N_COLUMNAS, "columnas y valores descuadrados"
         marcadores = ",".join("?" * N_COLUMNAS)
