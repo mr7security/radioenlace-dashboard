@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Estado de Radioenlaces — SGP</title>
+<title>Panel de Supervisión de Radioenlaces — SGP</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root{
@@ -253,7 +253,7 @@
   <div style="display:flex; align-items:center; gap:14px">
     <img id="logo" src="/logo" alt="" style="height:42px; display:none; background:#fff; border-radius:8px; padding:3px 8px"
          onload="this.style.display='block'">
-    <h1>Estado de Radioenlaces</h1>
+    <h1>PANEL DE SUPERVISIÓN DE RADIOENLACES</h1>
   </div>
   <div class="tabs">
     <button class="tab active" id="vGeneral" onclick="setVista('general')">General</button>
@@ -452,6 +452,7 @@ function togglePresentacion(){
   presentacion = !presentacion;
   $("bPres").classList.toggle("active", presentacion);
   if(presentacion){
+    setVista("general");   // la presentacion SIEMPRE parte de la vista General (rota Mimosa/Ceragon)
     if(!document.body.classList.contains("tv")) toggleTV();  // presentacion implica modo TV
     presIdx = 0;
     clearInterval(presTimer);
