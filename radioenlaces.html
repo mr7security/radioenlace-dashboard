@@ -496,17 +496,18 @@ function cuerpoLado(r){
         <div class="picos">Cap. pico <b>${rr(pm.cap_pico)}</b> · Tput pico <b>${rr(pm.tp_pico)}</b> <i>Mbps · PM 15 min</i></div>
       </div>`;
   }else{
-    // Mimosa: Capacidad (tasa PHY) + Throughput real, al estilo Ceragon
+    // Mimosa: throughput real como valor grande (comparable con Ceragon);
+    // la tasa PHY (techo maximo) queda como referencia en la linea pequeña.
     const rr = v => (v===null||v===undefined)?"--":Math.round(v);
     bloque2 = `<div class="sensor" data-type="qual">
         <div class="label">⚡ Capacidad / Throughput</div>
         <div class="dual">
-          <div class="dcell"><span class="t">Cap. Rx</span>
-            <div class="v2" style="color:var(--accent)">${rr(r.rx_phy_mbps)}<small>Mbps</small></div></div>
           <div class="dcell"><span class="t">Tput Rx</span>
-            <div class="v2">${rr(r.tput_rx_mbps)}<small>Mbps</small></div></div>
+            <div class="v2" style="color:var(--accent)">${rr(r.tput_rx_mbps)}<small>Mbps</small></div></div>
+          <div class="dcell"><span class="t">Tput Tx</span>
+            <div class="v2">${rr(r.tput_tx_mbps)}<small>Mbps</small></div></div>
         </div>
-        <div class="picos">PHY Tx/Rx <b>${rr(r.tx_phy_mbps)}/${rr(r.rx_phy_mbps)}</b> · Tput <b>${rr(r.tput_tx_mbps)}/${rr(r.tput_rx_mbps)}</b> <i>Mbps</i></div>
+        <div class="picos">PHY máx Tx/Rx <b>${rr(r.tx_phy_mbps)}/${rr(r.rx_phy_mbps)}</b> <i>Mbps</i></div>
         <div class="ind">SNR <b>${n(r.snr)}</b> dB · EVM <b>${n(r.evm_medio)}</b> dB</div>
       </div>`;
   }
