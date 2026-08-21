@@ -180,6 +180,17 @@
   body.tv canvas.chart{height:clamp(16px, 3vh, 42px)}
   body.tv .detalle{display:none}   /* el detalle completo solo en vista normal */
 
+  /* ===== Pestañas de vista (General / Mimosa / Ceragon) ===== */
+  .tabs{display:flex; gap:5px}
+  .tab{background:transparent; color:var(--muted); border:1px solid #334155; border-radius:8px;
+       padding:7px 15px; font-size:.85rem; cursor:pointer; text-transform:uppercase; letter-spacing:.03em; font-weight:600}
+  .tab:hover{color:var(--text); border-color:var(--accent)}
+  .tab.active{background:var(--accent); color:#0f172a; border-color:var(--accent)}
+  body.tv .tabs{display:none}   /* en presentacion no se muestran las pestañas */
+  /* En las pestañas de detalle (Mimosa/Ceragon) las tarjetas son mas anchas */
+  body[data-vista="mimosa"] .cards,
+  body[data-vista="ceragon"] .cards{grid-template-columns:repeat(auto-fit,minmax(440px,1fr))}
+
   /* ===== Cartel de SIN CONEXIÓN a pantalla completa (solo modo TV) ===== */
   #offline-overlay{position:fixed; inset:0; z-index:9999; display:none;
     flex-direction:column; align-items:center; justify-content:center; text-align:center;
@@ -201,6 +212,11 @@
     <img id="logo" src="/logo" alt="" style="height:42px; display:none; background:#fff; border-radius:8px; padding:3px 8px"
          onload="this.style.display='block'">
     <h1>Estado de Radioenlaces</h1>
+  </div>
+  <div class="tabs">
+    <button class="tab active" id="vGeneral" onclick="setVista('general')">General</button>
+    <button class="tab" id="vMimosa" onclick="setVista('mimosa')">Mimosa</button>
+    <button class="tab" id="vCeragon" onclick="setVista('ceragon')">Ceragon</button>
   </div>
   <div class="btns">
     <button class="btn" id="b1h" onclick="setRange(1)">1h</button>
@@ -233,10 +249,12 @@ const TECH_COLORS = { "mimosa":"#38bdf8", "ceragon":"#a78bfa" };
 const TECH_NOMBRE = { "mimosa":"MIMOSA", "ceragon":"CERAGON" };
 
 let rangeH = 6;
+let vista = "general";   // general | mimosa | ceragon
 let alertsOn = false;
 try{ alertsOn = localStorage.getItem("alertsOn") === "1"; }catch(e){}
 let histSeries = {};   // key "nombre|sig" / "nombre|qual" -> [[ts,v],...]
 let radiosActuales = [];
+let ultimaData = null;  // ultimo /api/estado recibido (para re-render al cambiar de pestaña)
 let prevBad = {};
 let audioCtx = null;
 
@@ -426,6 +444,13 @@ function setRange(h){
   $("b"+h+"h").classList.add("active");
   drawAllCharts();
 }
+function setVista(v){
+  vista = v;
+  document.body.dataset.vista = v;
+  ["vGeneral","vMimosa","vCeragon"].forEach(id=>$(id).classList.remove("active"));
+  $("v"+v.charAt(0).toUpperCase()+v.slice(1)).classList.add("active");
+  if(ultimaData) render(ultimaData);   // re-render inmediato con lo ultimo recibido
+}
 
 /* ---------- escalas de color RF ---------- */
 // Señal: RSSI/RSL en dBm. Bar de -90 (0%) a -30 (100%).
@@ -461,8 +486,9 @@ const NIVEL_INFO = {
 /* ---------- tarjeta Ceragon con dos lados ---------- */
 const ORDEN_NIVEL = {ok:0, aviso:1, critico:2, caido:3};
 
-// Contenido de un extremo (lado) de un enlace, para Ceragon o Mimosa
-function cuerpoLado(r){
+// Contenido de un extremo (lado) de un enlace, para Ceragon o Mimosa.
+// conDetalle=true añade la tabla de detalle completa (pestañas Mimosa/Ceragon).
+function cuerpoLado(r, conDetalle){
   const nivel = r.nivel || "caido";
   const info = NIVEL_INFO[nivel] || NIVEL_INFO.caido;
   const lado = r.lado || r.nombre || "";
@@ -518,11 +544,13 @@ function cuerpoLado(r){
         <div class="ind">SNR <b class="v-${colorSNR(r.snr)}">${n(r.snr)}</b> dB · EVM <b class="v-${colorCalidad(r.evm_medio)}">${n(r.evm_medio)}</b> dB</div>
       </div>`;
   }
-  return `<div class="lado">${cab}${senalBloque}${bloque2}</div>`;
+  const detalle = conDetalle ? detalleHTML(r) : "";
+  return `<div class="lado">${cab}${senalBloque}${bloque2}${detalle}</div>`;
 }
 
-// Tarjeta de un enlace (grupo) con sus dos extremos
-function tarjetaEnlace(grupo, ends, color){
+// Tarjeta de un enlace (grupo) con sus dos extremos.
+// conDetalle=true muestra la tabla completa de cada extremo (pestañas por tecnologia).
+function tarjetaEnlace(grupo, ends, color, conDetalle){
   let peor = "ok";
   ends.forEach(r=>{ const nv=r.nivel||"caido"; if(ORDEN_NIVEL[nv]>ORDEN_NIVEL[peor]) peor=nv; });
   const info = NIVEL_INFO[peor];
@@ -533,13 +561,13 @@ function tarjetaEnlace(grupo, ends, color){
       <div class="label">${esc(r.lado||"")} — RSL histórico</div>
       <canvas class="chart" data-key="${esc(r.nombre)}|sig" data-color="${col}"></canvas>
     </div>`).join("");
-  return `<div class="card ${info.card}" style="--sc:${col}">
+  return `<div class="card ${info.card}${conDetalle?" detalle-on":""}" style="--sc:${col}">
       <div class="card-h">
         <h2>${esc(grupo)}</h2>
         <span class="tech">${esc(modelo)}</span>
         <span class="status ${info.cls}">${info.txt}</span>
       </div>
-      <div class="doslados">${ends.map(cuerpoLado).join("")}</div>
+      <div class="doslados">${ends.map(r=>cuerpoLado(r, conDetalle)).join("")}</div>
       <div class="charts charts-row">${charts}</div>
     </div>`;
 }
@@ -598,7 +626,22 @@ function tarjetaMimosa(r, color){
 
 /* ---------- render ---------- */
 function render(data){
+  ultimaData = data;
   radiosActuales = (data.radios||[]).map(r=>r.nombre);
+
+  // Alertas sonoras: por CADA radio (en cualquier pestaña), al entrar en aviso/critico/caido
+  (data.radios||[]).forEach(r=>{
+    const nivel = r.nivel || "caido";
+    const info = NIVEL_INFO[nivel] || NIVEL_INFO.caido;
+    const malo = nivel==="critico" || nivel==="caido" || nivel==="aviso";
+    if(malo && !prevBad[r.nombre]){
+      const et = (r.lado ? `${r.grupo||""} ${r.lado}`.trim() : r.nombre);
+      beep();
+      notify((nivel==="caido"?"✖ ":"⚠ ") + et, (r.avisos||[]).join(" · ") || info.txt);
+    }
+    prevBad[r.nombre] = malo;
+  });
+
   // agrupar por tecnologia conservando el orden
   const groups = [];
   const byTech = {};
@@ -608,24 +651,12 @@ function render(data){
     byTech[tech].radios.push(r);
   });
 
+  const conDetalle = vista !== "general";   // pestañas Mimosa/Ceragon: tarjetas con detalle
   let html = "";
-  groups.forEach(g=>{
+  groups.filter(g => vista==="general" || g.tech===vista).forEach(g=>{
     const color = TECH_COLORS[g.tech] || "#38bdf8";
     let nOk=0, nWarn=0, nAlarm=0, nOff=0;
     let cardsHtml = "";
-
-    // Alertas sonoras: por cada radio (cada extremo), al entrar en aviso/critico/caido
-    g.radios.forEach(r=>{
-      const nivel = r.nivel || "caido";
-      const info = NIVEL_INFO[nivel] || NIVEL_INFO.caido;
-      const malo = nivel==="critico" || nivel==="caido" || nivel==="aviso";
-      if(malo && !prevBad[r.nombre]){
-        const et = (r.lado ? `${r.grupo||""} ${r.lado}`.trim() : r.nombre);
-        beep();
-        notify((nivel==="caido"?"✖ ":"⚠ ") + et, (r.avisos||[]).join(" · ") || info.txt);
-      }
-      prevBad[r.nombre] = malo;
-    });
 
     // Una tarjeta por enlace (grupo) con sus extremos, para Mimosa y Ceragon
     const enlaces = [];
@@ -639,7 +670,7 @@ function render(data){
       let peor = "ok";
       e.ends.forEach(r=>{ const nv=r.nivel||"caido"; if(ORDEN_NIVEL[nv]>ORDEN_NIVEL[peor]) peor=nv; });
       if(peor==="ok") nOk++; else if(peor==="aviso") nWarn++; else if(peor==="critico") nAlarm++; else nOff++;
-      cardsHtml += tarjetaEnlace(e.grupo, e.ends, color);
+      cardsHtml += tarjetaEnlace(e.grupo, e.ends, color, conDetalle);
     });
     const pills =
       (nAlarm ? `<span class="pill alarm">⚠ ${nAlarm} crítico</span>` : "") +
