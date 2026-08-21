@@ -695,6 +695,9 @@ def parsear_ceragon(nombre, host, datos):
         "modulacion": etiqueta_modulacion(modulacion_raw),
         "pm": datos.get("pm") or {},   # cap_pico, cap_media, tp_pico, tp_media (Mbps)
         "throughput_mbps": (datos.get("pm") or {}).get("tp_media"),
+        # se guarda en el historico para la grafica de throughput (Ceragon)
+        "tput_rx_mbps": (datos.get("pm") or {}).get("tp_media"),
+        "tput_tx_mbps": None,
         "remoto_rf": {},
         "tx_mcs": None, "rx_mcs": None, "tx_streams": None, "rx_streams": None,
         "tx_phy_mbps": None, "rx_phy_mbps": None,
