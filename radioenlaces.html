@@ -119,10 +119,11 @@
   .lado .lado-h{order:0}
   .lado .cbars{order:3}
   .lado .detalle{order:4}
-  /* franja resumen del enlace (vista Mimosa) */
-  .resumen{display:flex; flex-wrap:wrap; gap:6px 20px; padding:8px 4px 8px; font-size:.74rem;
-           color:var(--muted); border-bottom:1px solid #24334a; margin-bottom:8px}
-  .resumen span{white-space:nowrap}
+  /* franja resumen del enlace (vista Mimosa): 4 celdas repartidas y centradas */
+  .resumen{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:6px 12px;
+           padding:8px 4px; font-size:.74rem; color:var(--muted);
+           border-bottom:1px solid #24334a; margin-bottom:8px}
+  .resumen span{white-space:nowrap; text-align:center}
   .resumen b{color:var(--text); font-variant-numeric:tabular-nums}
   body.tv .charts-row{display:none}   /* en TV, los enlaces de 2 lados van sin grafica para que quepan */
   /* En TV los dos lados se APILAN (uno arriba, otro abajo): cada lado ocupa todo
